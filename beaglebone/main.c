@@ -30,7 +30,6 @@ extern int xcorr(int*, int*, int, double*);
 #define THRESHOLD 500
 extern int firstPeak(int*, int, int);
 extern int maxIndex(double *, int , double *);
-extern void plotGraph(int *, int *, int);
 extern void plotWithGnuplot(char *, ...);
 
 static void pabort(const char *s);
@@ -208,8 +207,7 @@ void performFirstPeak(){
 	index0 = firstPeak(ch0, chsz, THRESHOLD);
 	index1 = firstPeak(ch1, chsz, THRESHOLD);
 	index2 = firstPeak(ch2, chsz, THRESHOLD);
-	index2 -= 0;
-	printf("diff: %d, i0: %d, i1: %d\n", index1-index0, index0, index1);
+	printf("i0: %d, i1: %d, i2: %d\n", index0, index1, index2);
 }
 
 void performXCorr(){
@@ -225,16 +223,21 @@ void performXCorr(){
 	corr = calloc(chsz*2, sizeof(double));
 
 	xcorr(ch0, ch1, chsz, corr);
+	index = maxIndex(corr, sz, &maxVal);
+	index -= chsz;
+	printf("0-1 delay: %d, corr: %lf", index, maxVal);
 	xcorr(ch0, ch2, chsz, corr);
 	index = maxIndex(corr, sz, &maxVal);
 	index -= chsz;
-	printVisual(index+SMPSZ, SMPSZ*2);
-	printf("delay: %d, corr: %lf\n", index, maxVal);
-	plotGraph(ch0, ch1, SMPSZ);
+	printf("\t0-2 delay: %d, corr: %lf", index, maxVal);
+	xcorr(ch1, ch2, chsz, corr);
+	index = maxIndex(corr, sz, &maxVal);
+	index -= chsz;
+	printf("\t1-2 delay: %d, corr: %lf\n", index, maxVal);
+	//printVisual(index+SMPSZ, SMPSZ*2);
 }
 
 int main(int argc, char *argv[]){
-	plotWithGnuplot("sssdd", "aaa", "bbb", "ccc", 4, 5);
 	spiInit();
 
 	while(1){
