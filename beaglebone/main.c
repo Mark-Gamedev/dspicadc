@@ -72,14 +72,8 @@ int transfer(){
 		pabort("can't send spi message");
 	}
 
-	/*
-	for (ret = 0; ret < SZ; ret++) {
-		if (!(ret % 6)){
-			puts("");
-		}
-		printf("%.2X ", rx[ret]); }
-	*/
 	processDataTestAcc(rx);
+
 	return 0;
 }
 
