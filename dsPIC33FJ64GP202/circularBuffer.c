@@ -1,36 +1,36 @@
-#include <stdio.h>
+#include <stdlib.h>
+#include "circularBuffer.h"
 
-/* Opaque buffer element type.  This would be defined by the application. */
-typedef struct {
-    int value;
-} ElemType;
+CircularBuffer *cb;
+static CircularBuffer circularBuffer;
+static int intbuf[BUFFERSZ];
 
-/* Circular buffer object */
-typedef struct {
-    int size;        /* maximum number of elements           */
-    int start;       /* index of oldest element              */
-    int count;       /* number of elements                   */
-    ElemType *elems; /* vector of elements                   */
-} CircularBuffer;
-
-void cbInit(CircularBuffer *cb, int size) {
+//void cbInit(CircularBuffer *cb, int size) {
+void cbInit() {
+    /*
     cb->size = size;
     cb->start = 0;
     cb->count = 0;
-    cb->elems = (ElemType *) calloc(cb->size, sizeof (ElemType));
+    cb->elems = (int *) calloc(cb->size, sizeof (int));
+    */
+    cb = &circularBuffer;
+    cb->size = BUFFERSZ;
+    cb->start = 0;
+    cb->count = 0;
+    cb->elems = intbuf;
 }
 
-int cbIsFull(CircularBuffer *cb) {
+int cbIsFull() {
     return cb->count == cb->size;
 }
 
-int cbIsEmpty(CircularBuffer *cb) {
+int cbIsEmpty() {
     return cb->count == 0;
 }
 
-void cbWrite(CircularBuffer *cb, ElemType *elem) {
+void cbWrite(int elem) {
     int end = (cb->start + cb->count) % cb->size;
-    cb->elems[end] = *elem;
+    cb->elems[end] = elem;
     if (cb->count == cb->size){
         cb->start = (cb->start + 1) % cb->size; /* full, overwrite */
     }else{
@@ -38,8 +38,9 @@ void cbWrite(CircularBuffer *cb, ElemType *elem) {
     }
 }
 
-void cbRead(CircularBuffer *cb, ElemType *elem) {
-    *elem = cb->elems[cb->start];
+int cbRead() {
+    int ret = cb->elems[cb->start];
     cb->start = (cb->start + 1) % cb->size;
     cb->count--;
+    return ret;
 }

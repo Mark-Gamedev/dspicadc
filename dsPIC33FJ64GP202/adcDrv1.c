@@ -5,8 +5,8 @@
 #endif
 
 #include <spi.h>
+#include "circularBuffer.h"
 
-#define  SAMP_BUFF_SIZE	 		50		// Size of the input buffer per analog input
 #define  NUM_CHS2SCAN			4		// Number of channels enabled for channel scan
 
 /*=============================================================================
@@ -65,7 +65,8 @@ will stop sampling and trigger a conversion on every Timer3 time-out, i.e., Ts=1
 =============================================================================*/
 void initTmr3() {
     TMR3 = 0x0000;
-    PR3 = 49;
+    //PR3 = 49;
+    PR3 = 99;
     IFS0bits.T3IF = 0;
     IEC0bits.T3IE = 0;
 
@@ -77,25 +78,25 @@ void initTmr3() {
 /*=============================================================================
 ADC INTERRUPT SERVICE ROUTINE
 =============================================================================*/
-int  ain3Buff[SAMP_BUFF_SIZE];
-int  ain4Buff[SAMP_BUFF_SIZE];
-int  ain10Buff[SAMP_BUFF_SIZE];
-//int  ain11Buff[SAMP_BUFF_SIZE];
 
 int  scanCounter=0;
 int  sampleCounter=0;
 
-#define MYMAGIC 0xAA00
-
 void __attribute__((interrupt, no_auto_psv)) _ADC1Interrupt(void) {
-    unsigned int buffer = ADC1BUF0;
+    unsigned int value = ADC1BUF0;
     // each spi transfer is 16 bits
-    // ssss ccdd dddd dddd
+    // 0sss ccdd dddd dddd
     // s -- sequence number/sampleCounter
     // c -- channel number
     // d -- data
-    buffer = sampleCounter << 12 | scanCounter << 10 | buffer;
-    addToSPIBuffer(buffer);
+
+    int data;
+    //if(scanCounter==3){
+    //    data = 0x8000 | cb->count;
+    //}else{
+        data = ((sampleCounter & 7)  << 12) | scanCounter << 10 | value;
+    //}
+    cbWrite(data);
 
     scanCounter++;
     if (scanCounter == NUM_CHS2SCAN) {

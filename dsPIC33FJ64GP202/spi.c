@@ -7,11 +7,7 @@
 
 #include "p33Fxxxx.h"
 #include <spi.h>
-
-//buffer size needs to be big enough so it does not get overwritten constantly
-#define TXBUFSIZE 1000
-static unsigned int txBuffer[TXBUFSIZE];
-static int sendPos, fillPos;
+#include "circularBuffer.h"
 
 void configSpiPins(){
     //remap pins
@@ -52,65 +48,26 @@ void initSPI(void) {
     // Interrupt Controller Settings
     IFS0bits.SPI1IF = 0; // Clear the Interrupt Flag
     IEC0bits.SPI1IE = 1; // Enable the Interrupt
-
-    sendPos = 1;
-    fillPos = 0;
 }
 
-void avoidOverflow() {
-    if (fillPos > TXBUFSIZE && sendPos > TXBUFSIZE) {
-        fillPos -= TXBUFSIZE;
-        sendPos -= TXBUFSIZE;
-    }
-    if(fillPos > sendPos + TXBUFSIZE){
-        fillPos -= TXBUFSIZE;
-    }
-    if(sendPos > fillPos + TXBUFSIZE){
-        sendPos -= TXBUFSIZE;
-    }
-}
-
-#define WORD_PER_TRANSFER 3
-int currentWord;
-int testbuf[3] = {0x1234, 0x5678, 0x9abc};
-void _ISRFAST _SPI1Interrupt(void){
+void _ISRFAST _SPI1Interrupt(void) {
     //unsigned int buffer;
     //disableADCInt();
 
     // Retrieve data from receive buffer
-    IFS0bits.SPI1IF = 0;             //Clear the interrupt flag
-    SPI1STATbits.SPIROV = 0;         //Clear any errors
+    IFS0bits.SPI1IF = 0; //Clear the interrupt flag
+    SPI1STATbits.SPIROV = 0; //Clear any errors
     //buffer = SPI1BUF;                //Read in SPI1 buffer
 
     // Transfers from dsPIC to ARM
-    while(SPI1STATbits.SPITBF);  // wait for transfer?
-    
-    //test
-    //WriteSPI1(testbuf[currentWord]);
-    //currentWord++;
-    //return;
+    while (SPI1STATbits.SPITBF); // wait for transfer?
 
-    if (sendPos < fillPos) {
-        WriteSPI1(txBuffer[sendPos % TXBUFSIZE]);
-        sendPos++;
-        //avoidOverflow();
-    }else{
-        WriteSPI1(0xDEAD);
+    int value;
+    if(!cbIsEmpty()){
+        value = cbRead();
     }
-    
-    /*
-    currentWord++;
-    if(currentWord == WORD_PER_TRANSFER){
-        currentWord=0;
-        enableADCInt();
-    }
-    */
+    WriteSPI1(value);
+
     //enableADCInt();
     return;
- }
-
-void addToSPIBuffer(unsigned int data){
-    txBuffer[fillPos%TXBUFSIZE] = data;
-    fillPos++;
-    avoidOverflow();
 }
