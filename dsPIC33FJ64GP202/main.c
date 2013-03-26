@@ -4,8 +4,6 @@
 #include "p24fxxxx.h"
 #endif
 
-#include "adcDrv1.h"
-
 //Macros for Configuration Fuse Registers:
 //Invoke macros to set up  device configuration fuse registers.
 //The fuses will select the oscillator source, power-up timers, watch-dog
