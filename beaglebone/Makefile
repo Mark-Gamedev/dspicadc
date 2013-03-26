@@ -1,11 +1,11 @@
 
 TARGET = spi
-SRCS   = main.c
+SRCS   = main.c corr.c
 OBJS   = $(SRCS:.c=.o)
 
 CC = gcc
 CCFLAGS = -Wall -Werror
-LDFLAGS =
+LDFLAGS = -lpthread
 LIBS    =
 
 all: $(TARGET) 

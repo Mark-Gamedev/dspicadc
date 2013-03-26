@@ -7,6 +7,7 @@
 #include <sys/ioctl.h>
 #include <linux/types.h>
 #include <linux/spi/spidev.h>
+#include <pthread.h>
 
 static const char *device = "/dev/spidev2.0";
 static uint8_t mode = 0;
@@ -15,7 +16,31 @@ static uint32_t speed = 1000000;
 static uint16_t delay = 0;
 static int fd;
 
-#define SZ 2
+// max is 158
+#define SZ 150
+
+#define SMPSZ 500
+
+extern int xcorr(int*, int*, int);
+static int ch0b0[SMPSZ];
+static int ch1b0[SMPSZ];
+static int ch0b1[SMPSZ];
+static int ch1b1[SMPSZ];
+static int fillingB1;
+static int fillCounter;
+
+pthread_t thread;
+
+void *performXCorr(){
+	int d;
+	if(fillingB1){
+		d = xcorr(ch1b0, ch0b0, SMPSZ);
+	}else{
+		d = xcorr(ch1b1, ch0b1, SMPSZ);
+	}
+	printf("%d\n", d);
+	return 0;
+}
 
 static void pabort(const char *s){
 	perror(s);
@@ -34,22 +59,51 @@ void processData2(uint8_t *data){
 	int scanCounter = (raw >> 10) & 0b11;
 	int sampleCounter = (raw >> 12) & 0xF;
 	int value = raw & 0x3FF;
-	//printf("%04d %01d %04d    %04x\n", sampleCounter, scanCounter, value, raw);
-	if(scanCounter == 0){
-		printf("%d\n", value);
-	}
-	sampleCounter+=scanCounter;
+	//if(raw & 0x8000){
+	//	printf("samples in buffer: %d  %04x\n", raw & 0x7FFF, raw & 0x7FFF);
+	//}else{
+		printf("%04d %01d %04d    %04x\n", sampleCounter, scanCounter, value, raw);
+	//}
 }
-
 
 void processDataTestAcc(uint8_t *data){
 	int raw = data[1] << 8 | data[0];
 	int scanCounter = (raw >> 10) & 0b11;
 	int value = raw & 0x3FF;
 	if(scanCounter == 0){
-		if(value > 200){
+		if(value > 400){
 			printf("KNOCK!!!\n");
 		}
+	}
+}
+
+void processDataForXcorr(uint8_t *data){
+	int raw = data[1] << 8 | data[0];
+	int scanCounter = (raw >> 10) & 0b11;
+	int value = raw & 0x3FF;
+
+	int *ch0, *ch1;
+	if(fillingB1){
+		ch0 = (int*)ch0b1;
+		ch1 = (int*)ch1b1;
+	}else{
+		ch0 = ch0b0;
+		ch1 = ch1b0;
+	}
+
+	if(scanCounter==0){
+		ch0[fillCounter >> 1] = value;
+	}
+	if(scanCounter==1){
+		ch1[fillCounter >> 1] = value;
+	}
+	fillCounter++;
+	if((fillCounter >> 1) == SMPSZ){
+		//int d = xcorr(ch1, ch0, SMPSZ);
+		//printf("%d\n", d);
+		fillingB1 ^= 1;
+		pthread_create(&thread, 0, performXCorr, 0);
+		fillCounter = 0;
 	}
 }
 
@@ -72,7 +126,11 @@ int transfer(){
 		pabort("can't send spi message");
 	}
 
-	processDataTestAcc(rx);
+	int i;
+	for(i=0;i<SZ;i+=2){
+		//processData2(&rx[i]);
+		processDataForXcorr(&rx[i]);
+	}
 
 	return 0;
 }
