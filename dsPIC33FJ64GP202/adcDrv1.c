@@ -5,7 +5,6 @@
 #endif
 
 #include <spi.h>
-#include "circularBuffer.h"
 
 #define  NUM_CHS2SCAN			4		// Number of channels enabled for channel scan
 
@@ -81,6 +80,21 @@ ADC INTERRUPT SERVICE ROUTINE
 int  scanCounter=0;
 int  sampleCounter=0;
 
+//test threshold
+int triggerSampleNumber[3];
+#define THRESHOLD 800
+void testThreshold(int value){
+    if(value > THRESHOLD){
+        triggerSampleNumber[scanCounter] = sampleCounter;
+    }
+
+    if(triggerSampleNumber[0] != 0 && triggerSampleNumber[1] != 0){
+        int diff = triggerSampleNumber[0] - triggerSampleNumber[1];
+        triggerSampleNumber[0] = 0;
+        triggerSampleNumber[1] = 0;
+    }
+}
+
 void __attribute__((interrupt, no_auto_psv)) _ADC1Interrupt(void) {
     unsigned int value = ADC1BUF0;
     // each spi transfer is 16 bits
@@ -89,13 +103,11 @@ void __attribute__((interrupt, no_auto_psv)) _ADC1Interrupt(void) {
     // c -- channel number
     // d -- data
 
-    int data;
-    if(scanCounter==3){
-        //data = 0x8000 | cb->count;
-    }else{
-        data = ((sampleCounter & 7)  << 12) | scanCounter << 10 | value;
+    if(scanCounter!=3){
+        int data;
+        data = (sampleCounter  << 12) | scanCounter << 10 | value;
+        addToSPIBuffer(data);
     }
-    cbWrite(data);
 
     scanCounter++;
     if (scanCounter == NUM_CHS2SCAN) {

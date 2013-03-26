@@ -7,11 +7,12 @@
 
 #include "p33Fxxxx.h"
 #include <spi.h>
-#include "circularBuffer.h"
 
-#define TXBUFSIZE 1000
-static unsigned int txBuffer[TXBUFSIZE];
-static int sendPos, fillPos;
+#define TXBUFSIZE 150
+static unsigned int txBuffer0[TXBUFSIZE];
+static unsigned int txBuffer1[TXBUFSIZE];
+static int fill0send1;
+static int sendPos, fillPos, fillSz;
 
 void configSpiPins(){
     //remap pins
@@ -77,11 +78,16 @@ void _ISRFAST _SPI1Interrupt(void) {
     //buffer = SPI1BUF;                //Read in SPI1 buffer
 
     // Transfers from dsPIC to ARM
-    while (SPI1STATbits.SPITBF); // wait for transfer?
+    while(SPI1STATbits.SPITBF); // wait for transfer?
 
     int value;
-    if(!cbIsEmpty()){
-        value = cbRead();
+    if(sendPos < TXBUFSIZE){
+        if(fill0send1){
+            value = txBuffer1[sendPos];
+        }else{
+            value = txBuffer0[sendPos];
+        }
+        sendPos++;
     }
     WriteSPI1(value);
 
@@ -89,3 +95,24 @@ void _ISRFAST _SPI1Interrupt(void) {
     return;
 }
 
+void addToSPIBuffer(unsigned int data){
+    if(fill0send1){
+        txBuffer0[fillPos] = data;
+    }else{
+        txBuffer1[fillPos] = data;
+    }
+    fillPos++;
+    if(fillPos==TXBUFSIZE){
+        fill0send1 ^= 1;
+        fillPos = 0;
+        if(sendPos!=TXBUFSIZE){
+            //debuging break point
+            sendPos = sendPos;
+        }
+        sendPos = 0;
+    }
+}
+
+int getFillSize(){
+    return fillSz;
+}

@@ -5,7 +5,6 @@
 #endif
 
 #include <stdlib.h>
-#include "circularBuffer.h"
 
 //Macros for Configuration Fuse Registers:
 //Invoke macros to set up  device configuration fuse registers.
@@ -47,8 +46,6 @@ void switchToPLL() {
 
 int main(void) {
     switchToPLL();
-
-    cbInit();
 
     // Peripheral Initialisation
     configSpiPins();
