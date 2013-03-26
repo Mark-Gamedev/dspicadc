@@ -6,7 +6,6 @@
 
 #include <spi.h>
 
-#define  SAMP_BUFF_SIZE	 		50		// Size of the input buffer per analog input
 #define  NUM_CHS2SCAN			4		// Number of channels enabled for channel scan
 
 /*=============================================================================
@@ -77,25 +76,38 @@ void initTmr3() {
 /*=============================================================================
 ADC INTERRUPT SERVICE ROUTINE
 =============================================================================*/
-int  ain3Buff[SAMP_BUFF_SIZE];
-int  ain4Buff[SAMP_BUFF_SIZE];
-int  ain10Buff[SAMP_BUFF_SIZE];
-//int  ain11Buff[SAMP_BUFF_SIZE];
 
 int  scanCounter=0;
 int  sampleCounter=0;
 
-#define MYMAGIC 0xAA00
+//test threshold
+int triggerSampleNumber[3];
+#define THRESHOLD 800
+void testThreshold(int value){
+    if(value > THRESHOLD){
+        triggerSampleNumber[scanCounter] = sampleCounter;
+    }
+
+    if(triggerSampleNumber[0] != 0 && triggerSampleNumber[1] != 0){
+        int diff = triggerSampleNumber[0] - triggerSampleNumber[1];
+        triggerSampleNumber[0] = 0;
+        triggerSampleNumber[1] = 0;
+    }
+}
 
 void __attribute__((interrupt, no_auto_psv)) _ADC1Interrupt(void) {
-    unsigned int buffer = ADC1BUF0;
+    unsigned int value = ADC1BUF0;
     // each spi transfer is 16 bits
-    // ssss ccdd dddd dddd
+    // 0sss ccdd dddd dddd
     // s -- sequence number/sampleCounter
     // c -- channel number
     // d -- data
-    buffer = sampleCounter << 12 | scanCounter << 10 | buffer;
-    addToSPIBuffer(buffer);
+
+    if(scanCounter!=3){
+        int data;
+        data = (sampleCounter  << 12) | scanCounter << 10 | value;
+        addToSPIBuffer(data);
+    }
 
     scanCounter++;
     if (scanCounter == NUM_CHS2SCAN) {
