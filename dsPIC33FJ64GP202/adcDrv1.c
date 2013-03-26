@@ -65,8 +65,7 @@ will stop sampling and trigger a conversion on every Timer3 time-out, i.e., Ts=1
 =============================================================================*/
 void initTmr3() {
     TMR3 = 0x0000;
-    //PR3 = 49;
-    PR3 = 99;
+    PR3 = 49;
     IFS0bits.T3IF = 0;
     IEC0bits.T3IE = 0;
 
@@ -91,11 +90,11 @@ void __attribute__((interrupt, no_auto_psv)) _ADC1Interrupt(void) {
     // d -- data
 
     int data;
-    //if(scanCounter==3){
-    //    data = 0x8000 | cb->count;
-    //}else{
+    if(scanCounter==3){
+        //data = 0x8000 | cb->count;
+    }else{
         data = ((sampleCounter & 7)  << 12) | scanCounter << 10 | value;
-    //}
+    }
     cbWrite(data);
 
     scanCounter++;

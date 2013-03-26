@@ -9,6 +9,10 @@
 #include <spi.h>
 #include "circularBuffer.h"
 
+#define TXBUFSIZE 1000
+static unsigned int txBuffer[TXBUFSIZE];
+static int sendPos, fillPos;
+
 void configSpiPins(){
     //remap pins
 
@@ -50,6 +54,19 @@ void initSPI(void) {
     IEC0bits.SPI1IE = 1; // Enable the Interrupt
 }
 
+void avoidOverflow() {
+    if (fillPos > TXBUFSIZE && sendPos > TXBUFSIZE) {
+        fillPos -= TXBUFSIZE;
+        sendPos -= TXBUFSIZE;
+    }
+    if(fillPos > sendPos + TXBUFSIZE){
+        fillPos -= TXBUFSIZE;
+    }
+    if(sendPos > fillPos + TXBUFSIZE){
+        sendPos -= TXBUFSIZE;
+    }
+}
+
 void _ISRFAST _SPI1Interrupt(void) {
     //unsigned int buffer;
     //disableADCInt();
@@ -71,3 +88,4 @@ void _ISRFAST _SPI1Interrupt(void) {
     //enableADCInt();
     return;
 }
+
