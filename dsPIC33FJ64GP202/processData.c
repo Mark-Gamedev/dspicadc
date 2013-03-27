@@ -5,11 +5,21 @@ PingPongBuffer ch0ppb;
 PingPongBuffer ch1ppb;
 PingPongBuffer ch2ppb;
 
+ThresholdState thresholdState;
+
 void ppbAdd(PingPongBuffer *ppb, PPBType value){
     if(ppb->fill1read0){
         ppb->buf1[ppb->fillCounter++] = value;
     }else{
         ppb->buf0[ppb->fillCounter++] = value;
+    }
+}
+
+void ppbWriteFirst(PingPongBuffer *ppb, PPBType value){
+    if(ppb->fill1read0){
+        ppb->buf1[0] = value;
+    }else{
+        ppb->buf0[0] = value;
     }
 }
 
@@ -46,16 +56,28 @@ void switchBufferCh2(){
     ppbSwitchBuffer(&ch2ppb);
 }
 
-void addToChannel0(int value){
-    ppbAdd(&ch0ppb, (PPBType)Q15(value));
+void addToChannel0(int value) {
+    if (thresholdState == StartStoring) {
+        ppbAdd(&ch0ppb, (PPBType) value);
+    } else {
+        ppbWriteFirst(&ch0ppb, (PPBType) value);
+    }
 }
 
-void addToChannel1(int value){
-    ppbAdd(&ch1ppb, (PPBType)Q15(value));
+void addToChannel1(int value) {
+    if (thresholdState == StartStoring) {
+        ppbAdd(&ch1ppb, (PPBType) value);
+    } else {
+        ppbWriteFirst(&ch1ppb, (PPBType) value);
+    }
 }
 
-void addToChannel2(int value){
-    ppbAdd(&ch2ppb, (PPBType)Q15(value));
+void addToChannel2(int value) {
+    if (thresholdState == StartStoring) {
+        ppbAdd(&ch2ppb, (PPBType) value);
+    } else {
+        ppbWriteFirst(&ch2ppb, (PPBType) value);
+    }
 }
 
 void performXCorrelation(){
@@ -66,9 +88,13 @@ void performXCorrelation(){
     fractional result[BUFFER_SZ*2-1];
     int corr01, corr02, corr12;
     VectorCorrelate(BUFFER_SZ, BUFFER_SZ, result, ch0ptr, ch1ptr);
-    VectorMax(BUFFER_SZ, result, &corr01);
+    VectorMax(BUFFER_SZ*2-1, result, &corr01);
     VectorCorrelate(BUFFER_SZ, BUFFER_SZ, result, ch0ptr, ch2ptr);
-    VectorMax(BUFFER_SZ, result, &corr02);
+    VectorMax(BUFFER_SZ*2-1, result, &corr02);
     VectorCorrelate(BUFFER_SZ, BUFFER_SZ, result, ch1ptr, ch2ptr);
-    VectorMax(BUFFER_SZ, result, &corr12);
+    VectorMax(BUFFER_SZ*2-1, result, &corr12);
+    addToSPIBuffer(0xAB00 | corr01);
+    //addToSPIBuffer(0xAB00 | corr02);
+    //addToSPIBuffer(0xAB00 | corr12);
+    spiStartSend();
 }

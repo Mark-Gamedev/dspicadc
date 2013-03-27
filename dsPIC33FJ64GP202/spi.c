@@ -8,11 +8,9 @@
 #include "p33Fxxxx.h"
 #include <spi.h>
 
-#define TXBUFSIZE 150
-static unsigned int txBuffer0[TXBUFSIZE];
-static unsigned int txBuffer1[TXBUFSIZE];
-static int fill0send1;
-static int sendPos, fillPos, fillSz;
+#define TXBUFSIZE 3
+static unsigned int txBuffer[TXBUFSIZE];
+static int sendPos, fillPos, startSend;
 
 void configSpiPins(){
     //remap pins
@@ -68,6 +66,12 @@ void avoidOverflow() {
     }
 }
 
+void resetBuffer(){
+    startSend = 0;
+    sendPos = 0;
+    fillPos = 0;
+}
+
 void __attribute__((interrupt, no_auto_psv)) _SPI1Interrupt(void) {
     //unsigned int buffer;
     //disableADCInt();
@@ -80,8 +84,26 @@ void __attribute__((interrupt, no_auto_psv)) _SPI1Interrupt(void) {
     // Transfers from dsPIC to ARM
     while(SPI1STATbits.SPITBF); // wait for transfer?
 
-    WriteSPI1(0);
+    int value = 0;
+    if(startSend){
+        if(sendPos < fillPos){
+            value = txBuffer[sendPos++];
+        }else{
+            resetBuffer();
+        }
+    }
+    WriteSPI1(value);
 
     //enableADCInt();
     return;
+}
+
+void spiStartSend(){
+    startSend = 1;
+}
+
+void addToSPIBuffer(unsigned int data){
+    txBuffer[fillPos] = data;
+
+    fillPos++;
 }

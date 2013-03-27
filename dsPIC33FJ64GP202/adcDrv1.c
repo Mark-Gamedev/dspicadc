@@ -1,5 +1,6 @@
 #if defined(__dsPIC33F__)
 #include "p33Fxxxx.h"
+#include "processData.h"
 #elif defined(__PIC24H__)
 #include "p24hxxxx.h"
 #endif
@@ -15,7 +16,7 @@ void initAdc1(void) {
 
     IPC3bits.AD1IP = 5;
 
-    //AD1CON1bits.FORM   = 3;		// Data Output Format: Signed Fraction (Q15 format)
+    AD1CON1bits.FORM   = 2;		// Data Output Format: Signed Fraction (Q15 format)
     AD1CON1bits.FORM = 0; // Data Output Format: Integer
     AD1CON1bits.SSRC = 2; // Sample Clock Source: GP Timer starts conversion
     AD1CON1bits.ASAM = 1; // ADC Sample Control: Sampling begins immediately after conversion
@@ -77,23 +78,9 @@ void initTmr3() {
 ADC INTERRUPT SERVICE ROUTINE
 =============================================================================*/
 
-int  scanCounter=0;
-int  sampleCounter=0;
-
-//test threshold
-int triggerSampleNumber[3];
-#define THRESHOLD 800
-void testThreshold(int value){
-    if(value > THRESHOLD){
-        triggerSampleNumber[scanCounter] = sampleCounter;
-    }
-
-    if(triggerSampleNumber[0] != 0 && triggerSampleNumber[1] != 0){
-        int diff = triggerSampleNumber[0] - triggerSampleNumber[1];
-        triggerSampleNumber[0] = 0;
-        triggerSampleNumber[1] = 0;
-    }
-}
+int scanCounter;
+int sampleCounter;
+int startTrigger;
 
 void __attribute__((interrupt, no_auto_psv)) _ADC1Interrupt(void) {
     unsigned int value = ADC1BUF0;
@@ -102,6 +89,12 @@ void __attribute__((interrupt, no_auto_psv)) _ADC1Interrupt(void) {
     // s -- sequence number/sampleCounter
     // c -- channel number
     // d -- data
+    if(thresholdState == BelowThreshold && value > 600){
+        thresholdState = AboveThreshold;
+    }
+    if(thresholdState == AboveThreshold && scanCounter == 0){
+        thresholdState = StartStoring;
+    }
 
     switch(scanCounter){
         case 0:
@@ -121,6 +114,7 @@ void __attribute__((interrupt, no_auto_psv)) _ADC1Interrupt(void) {
         switchBufferCh0();
         switchBufferCh1();
         switchBufferCh2();
+        thresholdState = BelowThreshold;
         performXCorrelation();
     }
 

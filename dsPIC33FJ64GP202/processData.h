@@ -1,7 +1,8 @@
 #ifndef __PROCESSDATA__
 #define __PROCESSDATA__
 
-#define BUFFER_SZ 100
+#include <dsp.h>
+#define BUFFER_SZ 400
 typedef fractional PPBType;
 
 typedef struct {
@@ -12,4 +13,9 @@ typedef struct {
     int fill1read0;
 }PingPongBuffer;
 
+typedef int ThresholdState;
+#define BelowThreshold 0
+#define AboveThreshold 1
+#define StartStoring   2
+extern ThresholdState thresholdState;
 #endif
