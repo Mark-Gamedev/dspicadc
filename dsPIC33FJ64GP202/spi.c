@@ -68,7 +68,7 @@ void avoidOverflow() {
     }
 }
 
-void _ISRFAST _SPI1Interrupt(void) {
+void __attribute__((interrupt, no_auto_psv)) _SPI1Interrupt(void) {
     //unsigned int buffer;
     //disableADCInt();
 
@@ -80,39 +80,8 @@ void _ISRFAST _SPI1Interrupt(void) {
     // Transfers from dsPIC to ARM
     while(SPI1STATbits.SPITBF); // wait for transfer?
 
-    int value;
-    if(sendPos < TXBUFSIZE){
-        if(fill0send1){
-            value = txBuffer1[sendPos];
-        }else{
-            value = txBuffer0[sendPos];
-        }
-        sendPos++;
-    }
-    WriteSPI1(value);
+    WriteSPI1(0);
 
     //enableADCInt();
     return;
-}
-
-void addToSPIBuffer(unsigned int data){
-    if(fill0send1){
-        txBuffer0[fillPos] = data;
-    }else{
-        txBuffer1[fillPos] = data;
-    }
-    fillPos++;
-    if(fillPos==TXBUFSIZE){
-        fill0send1 ^= 1;
-        fillPos = 0;
-        if(sendPos!=TXBUFSIZE){
-            //debuging break point
-            sendPos = sendPos;
-        }
-        sendPos = 0;
-    }
-}
-
-int getFillSize(){
-    return fillSz;
 }

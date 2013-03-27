@@ -103,10 +103,25 @@ void __attribute__((interrupt, no_auto_psv)) _ADC1Interrupt(void) {
     // c -- channel number
     // d -- data
 
-    if(scanCounter!=3){
-        int data;
-        data = (sampleCounter  << 12) | scanCounter << 10 | value;
-        addToSPIBuffer(data);
+    switch(scanCounter){
+        case 0:
+            addToChannel0(value);
+            break;
+        case 1:
+            addToChannel1(value);
+            break;
+        case 2:
+            addToChannel2(value);
+            break;
+        default:
+            break;
+    }
+
+    if(isCh0Full() && isCh1Full() && isCh2Full()){
+        switchBufferCh0();
+        switchBufferCh1();
+        switchBufferCh2();
+        performXCorrelation();
     }
 
     scanCounter++;
