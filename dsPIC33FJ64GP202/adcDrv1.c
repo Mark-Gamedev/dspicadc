@@ -82,6 +82,8 @@ int scanCounter;
 int sampleCounter;
 int startTrigger;
 
+int smpSz, startCount;
+#define THRESHOLD 0
 void __attribute__((interrupt, no_auto_psv)) _ADC1Interrupt(void) {
     unsigned int value = ADC1BUF0;
     // each spi transfer is 16 bits
@@ -89,15 +91,12 @@ void __attribute__((interrupt, no_auto_psv)) _ADC1Interrupt(void) {
     // s -- sequence number/sampleCounter
     // c -- channel number
     // d -- data
-    if(thresholdState == BelowThreshold && value > 600){
-        thresholdState = AboveThreshold;
-    }
-    if(thresholdState == AboveThreshold && scanCounter == 0){
-        thresholdState = StartStoring;
-    }
-
+    
     switch(scanCounter){
         case 0:
+            if(value > THRESHOLD){
+                startCount = 1;
+            }
             addToChannel0(value);
             break;
         case 1:
@@ -110,11 +109,12 @@ void __attribute__((interrupt, no_auto_psv)) _ADC1Interrupt(void) {
             break;
     }
 
-    if(isCh0Full() && isCh1Full() && isCh2Full()){
-        switchBufferCh0();
-        switchBufferCh1();
-        switchBufferCh2();
-        thresholdState = BelowThreshold;
+    if(startCount){
+        smpSz++;
+    }
+
+    if(smpSz > BUFFER_SZ << 1){
+        startCount = 0;
         performXCorrelation();
     }
 
