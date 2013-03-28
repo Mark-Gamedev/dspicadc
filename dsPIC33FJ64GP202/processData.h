@@ -3,18 +3,26 @@
 
 #include <dsp.h>
 
-typedef fractional PPBType;
+/*  Settings  */
 //buffer size has to be power of 2 in order to avoid modula
-#define BUFFER_MASK 0x01FF
+#define BUFFER_MASK 0x01FF         // 2^9 = 512
 #define BUFFER_SZ BUFFER_MASK+1
-
-typedef struct {
-    PPBType buf0[BUFFER_SZ];
-    PPBType buf1[BUFFER_SZ];
-    int fillCounter;
-    int readCounter;
-    int fill1read0;
-}PingPongBuffer;
+/* Q15 format
+ * 0.500 -> 16384
+ * 0.525 -> 17203
+ * 0.550 -> 18022
+ * 0.575 -> 18842
+ * 0.600 -> 19661
+ * 0.625 -> 20480
+ * 0.650 -> 21299
+ * 0.675 -> 22118
+ * 0.700 -> 22938
+ * 0.725 -> 23757
+ * 0.750 -> 24576
+ * 0.775 -> 25395
+ * 0.800 -> 26214
+ */
+#define THRESHOLD 19661
 
 //Circular Buffer
 typedef fractional CBType;
@@ -24,6 +32,7 @@ typedef fractional CBType;
 typedef struct {
     CBType buf[BUFFER_SZ];
     int start;
+    int size;
     int count;
 }CircularBuffer;
 
@@ -31,11 +40,5 @@ CBType cbRead(CircularBuffer*);
 void cbWrite(CircularBuffer*, CBType);
 int cbIsEmpty(CircularBuffer*);
 int cbIsFull(CircularBuffer*);
-
-typedef int ThresholdState;
-#define BelowThreshold 0
-#define AboveThreshold 1
-#define StartStoring   2
-extern ThresholdState thresholdState;
 
 #endif

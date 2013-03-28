@@ -1,16 +1,5 @@
-/* 
- * File:   myspi.c
- * Author: mark
- *
- * Created on March 22, 2013, 1:46 PM
- */
-
 #include "p33Fxxxx.h"
 #include <spi.h>
-
-#define TXBUFSIZE 3
-static unsigned int txBuffer[TXBUFSIZE];
-static int sendPos, fillPos, startSend;
 
 void configSpiPins(){
     //remap pins
@@ -26,7 +15,7 @@ void configSpiPins(){
 
 void initSPI(void) {
 
-    IPC2bits.SPI1EIP = 7;
+    //IPC2bits.SPI1EIP = 7;// priority for spi, 7 is highest
 
     /* The following code shows the SPI register configuration for Slave mode */
     SPI1BUF = 0;
@@ -50,60 +39,22 @@ void initSPI(void) {
 
     // Interrupt Controller Settings
     IFS0bits.SPI1IF = 0; // Clear the Interrupt Flag
-    IEC0bits.SPI1IE = 1; // Enable the Interrupt
+
+    // we won't be using interrupts
+    //IEC0bits.SPI1IE = 1; // Enable the Interrupt
 }
 
-void avoidOverflow() {
-    if (fillPos > TXBUFSIZE && sendPos > TXBUFSIZE) {
-        fillPos -= TXBUFSIZE;
-        sendPos -= TXBUFSIZE;
+void spiSendWordBlocking(int data){
+    while(SPI1STATbits.SPITBF);
+    SPI1BUF = data;
+    while(SPI1STATbits.SPITBF);
+}
+
+void spiSendWordArrayBlocking(int* data, int count){
+    int i;
+    for(i=0;i<count;i++){
+        while(SPI1STATbits.SPITBF);
+        SPI1BUF = data[i];
     }
-    if(fillPos > sendPos + TXBUFSIZE){
-        fillPos -= TXBUFSIZE;
-    }
-    if(sendPos > fillPos + TXBUFSIZE){
-        sendPos -= TXBUFSIZE;
-    }
-}
-
-void resetBuffer(){
-    startSend = 0;
-    sendPos = 0;
-    fillPos = 0;
-}
-
-void __attribute__((interrupt, no_auto_psv)) _SPI1Interrupt(void) {
-    //unsigned int buffer;
-    //disableADCInt();
-
-    // Retrieve data from receive buffer
-    IFS0bits.SPI1IF = 0; //Clear the interrupt flag
-    SPI1STATbits.SPIROV = 0; //Clear any errors
-    //buffer = SPI1BUF;                //Read in SPI1 buffer
-
-    // Transfers from dsPIC to ARM
-    while(SPI1STATbits.SPITBF); // wait for transfer?
-
-    int value = 0;
-    if(startSend){
-        if(sendPos < fillPos){
-            value = txBuffer[sendPos++];
-        }else{
-            resetBuffer();
-        }
-    }
-    WriteSPI1(value);
-
-    //enableADCInt();
-    return;
-}
-
-void spiStartSend(){
-    startSend = 1;
-}
-
-void addToSPIBuffer(unsigned int data){
-    txBuffer[fillPos] = data;
-
-    fillPos++;
+    while(SPI1STATbits.SPITBF);
 }
