@@ -27,7 +27,8 @@ static int fd;
 #define STARTWORD 0xFABC
 #define ENDWORD   0xFABD
 
-extern int xcorr(int*, int*, int);
+extern int xcorr(int*, int*, int, double*);
+extern int maxIndex(double *, int , double *);
 static int ch0b0[SMPSZ];
 static int ch1b0[SMPSZ];
 static int ch0b1[SMPSZ];
@@ -37,6 +38,22 @@ static int fillCounter;
 
 static void pabort(const char *s);
 int saveBufferFromSpi(int**, int*);
+
+int hexDumpCount;
+void hexDump(int x){
+	if(!x){
+		return;
+	}
+	if(x==STARTWORD){
+		printf("#### ");
+	}else{
+		printf("%04x ", x);
+	}
+	hexDumpCount++;
+	if((hexDumpCount & 15) == 0){
+		printf("\n");
+	}
+}
 
 int spiGetInt16(){
 	uint8_t tx[2] = {0x00, };
@@ -54,7 +71,7 @@ int spiGetInt16(){
 		pabort("can't send spi message");
 	}
 	ret = *((int *)(&rx[0])) & 0xFFFF;
-	//if(ret==STARTWORD){printf("#########:%04x\n", ret);}
+	//hexDump(ret);
 	return ret;
 }
 
@@ -230,7 +247,22 @@ int saveBufferFromSpi(int** outPtr, int* outCount){
 	return count;
 }
 
-void saveWave(){
+void performXCorr(){
+	int *buf, *ch0, *ch1, index;
+	int sz, chsz;
+	double *corr, maxVal;
+	saveBufferFromSpi(&buf, &sz);
+	chsz = sz >> 1;
+	ch0 = buf;
+	ch1 = &buf[chsz];
+	corr = calloc(sz, sizeof(double));
+	xcorr(ch0, ch1, chsz, corr);
+	index = maxIndex(corr, sz, &maxVal);
+	index -= chsz;
+	printf("delay: %d, correlation: %lf\n", index, maxVal);
+}
+
+void saveWaveToFile(){
 	int *buf;
 	int sz;
 	int i;
@@ -265,7 +297,10 @@ void saveWave(){
 int main(int argc, char *argv[]){
 	spiInit();
 
-	saveWave();
+	//saveWave();
+	while(1){
+		performXCorr();
+	}
 
 	spiCleanup();
 	return 0;
