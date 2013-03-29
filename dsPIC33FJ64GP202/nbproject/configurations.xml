@@ -17,6 +17,7 @@
       <itemPath>main.c</itemPath>
       <itemPath>processData.c</itemPath>
       <itemPath>spi.c</itemPath>
+      <itemPath>traps.c</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"

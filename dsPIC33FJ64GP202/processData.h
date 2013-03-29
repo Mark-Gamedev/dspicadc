@@ -6,7 +6,8 @@
 /*  Settings  */
 //buffer size has to be power of 2 in order to avoid modula
 #define BUFFER_MASK 0x01FF         // 2^9 = 512
-#define BUFFER_SZ BUFFER_MASK+1
+//#define BUFFER_SZ BUFFER_MASK+1
+#define BUFFER_SZ 512
 /* Q15 format
  * 0.500 -> 16384
  * 0.525 -> 17203
@@ -22,7 +23,9 @@
  * 0.775 -> 25395
  * 0.800 -> 26214
  */
-#define THRESHOLD 19661
+#define THRESHOLD 600
+
+#define Convert10BitToQ15(x) (x << 5)
 
 //Circular Buffer
 typedef fractional CBType;

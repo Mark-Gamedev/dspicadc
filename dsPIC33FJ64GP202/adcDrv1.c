@@ -16,8 +16,8 @@ void initAdc1(void) {
     IPC3bits.AD1IP = 5;
 
     //AD1CON1bits.FORM = 3; // Data Output Format: Signed Fraction (Q15 format)
-    //AD1CON1bits.FORM = 0; // Data Output Format: Integer
-    AD1CON1bits.FORM = 2; // Data Output Format: Unsigned Fraction (Q15 format)
+    AD1CON1bits.FORM = 0; // Data Output Format: Integer
+    //AD1CON1bits.FORM = 2; // Data Output Format: Unsigned Fraction (Q15 format)
     
     AD1CON1bits.SSRC = 2; // Sample Clock Source: GP Timer starts conversion
     AD1CON1bits.ASAM = 1; // ADC Sample Control: Sampling begins immediately after conversion
@@ -53,12 +53,12 @@ void initAdc1(void) {
 
 }
 
-void disableADCInt(){
-    IPC3bits.AD1IP = 0;
+void adcDisable(){
+    AD1CON1bits.ADON = 0;
 }
 
-void enableADCInt(){
-    IPC3bits.AD1IP = 5;
+void adcEnable(){
+    AD1CON1bits.ADON = 1;
 }
 /*=============================================================================
 Timer 3 is setup to time-out every 125 microseconds (8Khz Rate). As a result, the module
@@ -66,7 +66,7 @@ will stop sampling and trigger a conversion on every Timer3 time-out, i.e., Ts=1
 =============================================================================*/
 void initTmr3() {
     TMR3 = 0x0000;
-    PR3 = 49;
+    PR3 = 4999;
     IFS0bits.T3IF = 0;
     IEC0bits.T3IE = 0;
 
@@ -80,15 +80,23 @@ ADC INTERRUPT SERVICE ROUTINE
 
 int scanCounter;
 int smpSz, startCount;
-
+int idleAvg[4] = {0,};
+#define hasAvg() (idleAvg[0]!=0)
 void __attribute__((interrupt, no_auto_psv)) _ADC1Interrupt(void) {
-    unsigned int value = ADC1BUF0;
+    int value = ADC1BUF0;
     // each spi transfer is 16 bits
     // 0sss ccdd dddd dddd
     // s -- sequence number/sampleCounter
     // c -- channel number
     // d -- data
-    
+
+    //value = Convert10BitToQ15(value-OFFSET);
+    //value = value << 2;
+    //if(hasAvg()){
+    //    value -= idleAvg[scanCounter];
+    //}
+
+    //value -= 512;
     switch(scanCounter){
         case 0:
             // detecting threshold
@@ -107,18 +115,29 @@ void __attribute__((interrupt, no_auto_psv)) _ADC1Interrupt(void) {
             break;
     }
     scanCounter++;
+    scanCounter &= 3;
+
+    // average
+    /*
+    if(!hasAvg() && isCh0Full()){
+        idleAvg[0] = readChannel0();
+        idleAvg[1] = readChannel1();
+        idleAvg[2] = readChannel2();
+    }
+    */
 
     if(startCount){
         smpSz++;
     }
 
-    IFS0bits.AD1IF = 0; // Clear the ADC1 Interrupt Flag
-
     // continue to overwrite half of the buffer after detecting threshold
     if(smpSz == BUFFER_SZ << 1){
+        adcDisable();
+        smpSz = 0;
         startCount = 0;
-        disableADCInt();
-        performXCorrelation();
-        enableADCInt();
+        //performXCorrelation();
+        sendBufferOverSpi();
+        adcEnable();
     }
+    IFS0bits.AD1IF = 0; // Clear the ADC1 Interrupt Flag
 }

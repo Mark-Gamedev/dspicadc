@@ -1,7 +1,10 @@
 #include "p33Fxxxx.h"
 #include <spi.h>
 
-void configSpiPins(){
+#define STARTWORD 0xFABC
+#define ENDWORD   0xFABD
+
+void spiPinConfig(){
     //remap pins
 
     TRISB = 0xFFFF;
@@ -44,17 +47,39 @@ void initSPI(void) {
     //IEC0bits.SPI1IE = 1; // Enable the Interrupt
 }
 
+void spiEnable(){
+    SPI1STATbits.SPIEN = 1;
+}
+
+void spiDisable(){
+    SPI1STATbits.SPIEN = 0;
+}
+
 void spiSendWordBlocking(int data){
     while(SPI1STATbits.SPITBF);
     SPI1BUF = data;
-    while(SPI1STATbits.SPITBF);
 }
 
-void spiSendWordArrayBlocking(int* data, int count){
+void spiSendWordArrayBlocking(int* data, int count) {
+    int i;
+    while (SPI1STATbits.SPITBF);
+    SPI1BUF = STARTWORD;
+    while (SPI1STATbits.SPITBF);
+    SPI1BUF = count;
+    for (i = 0; i < count; i++) {
+        while (SPI1STATbits.SPITBF);
+        SPI1BUF = data[i];
+    }
+    while (SPI1STATbits.SPITBF);
+    SPI1BUF = 0;
+    while (SPI1STATbits.SPITBF);
+}
+
+void spiSendWordArrayBlockingMarkMSB(int* data, int count){
     int i;
     for(i=0;i<count;i++){
         while(SPI1STATbits.SPITBF);
-        SPI1BUF = data[i];
+        SPI1BUF = data[i] | 0x8000;
     }
     while(SPI1STATbits.SPITBF);
 }
