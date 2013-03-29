@@ -66,7 +66,7 @@ will stop sampling and trigger a conversion on every Timer3 time-out, i.e., Ts=1
 =============================================================================*/
 void initTmr3() {
     TMR3 = 0x0000;
-    PR3 = 4999;
+    PR3 = 499;
     IFS0bits.T3IF = 0;
     IEC0bits.T3IE = 0;
 
@@ -131,7 +131,7 @@ void __attribute__((interrupt, no_auto_psv)) _ADC1Interrupt(void) {
     }
 
     // continue to overwrite half of the buffer after detecting threshold
-    if(smpSz == BUFFER_SZ << 1){
+    if(smpSz == BUFFER_SZ){
         adcDisable();
         smpSz = 0;
         startCount = 0;

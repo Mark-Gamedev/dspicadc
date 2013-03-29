@@ -63,6 +63,8 @@ void spiSendWordBlocking(int data){
 void spiSendWordArrayBlocking(int* data, int count) {
     int i;
     while (SPI1STATbits.SPITBF);
+    SPI1BUF = 0xFFFF;
+    while (SPI1STATbits.SPITBF);
     SPI1BUF = STARTWORD;
     while (SPI1STATbits.SPITBF);
     SPI1BUF = count;
@@ -75,6 +77,7 @@ void spiSendWordArrayBlocking(int* data, int count) {
     while (SPI1STATbits.SPITBF);
 }
 
+/*
 void spiSendWordArrayBlockingMarkMSB(int* data, int count){
     int i;
     for(i=0;i<count;i++){
@@ -83,3 +86,4 @@ void spiSendWordArrayBlockingMarkMSB(int* data, int count){
     }
     while(SPI1STATbits.SPITBF);
 }
+*/
