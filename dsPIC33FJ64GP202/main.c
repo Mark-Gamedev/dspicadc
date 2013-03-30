@@ -47,8 +47,10 @@ void switchToPLL() {
 int main(void) {
     switchToPLL();
 
+    initBuffers();
+
     // Peripheral Initialisation
-    configSpiPins();
+    spiPinConfig();
     initSPI();  // Initialize SPI
     initAdc1(); // Initialize ADC
     initTmr3(); // Initialise TIMER 3

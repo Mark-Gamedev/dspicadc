@@ -1,20 +1,10 @@
-/* 
- * File:   myspi.c
- * Author: mark
- *
- * Created on March 22, 2013, 1:46 PM
- */
-
 #include "p33Fxxxx.h"
 #include <spi.h>
 
-#define TXBUFSIZE 150
-static unsigned int txBuffer0[TXBUFSIZE];
-static unsigned int txBuffer1[TXBUFSIZE];
-static int fill0send1;
-static int sendPos, fillPos, fillSz;
+#define STARTWORD 0xFABC
+#define ENDWORD   0xFABD
 
-void configSpiPins(){
+void spiPinConfig(){
     //remap pins
 
     TRISB = 0xFFFF;
@@ -28,7 +18,7 @@ void configSpiPins(){
 
 void initSPI(void) {
 
-    IPC2bits.SPI1EIP = 7;
+    //IPC2bits.SPI1EIP = 7;// priority for spi, 7 is highest
 
     /* The following code shows the SPI register configuration for Slave mode */
     SPI1BUF = 0;
@@ -52,67 +42,48 @@ void initSPI(void) {
 
     // Interrupt Controller Settings
     IFS0bits.SPI1IF = 0; // Clear the Interrupt Flag
-    IEC0bits.SPI1IE = 1; // Enable the Interrupt
+
+    // we won't be using interrupts
+    //IEC0bits.SPI1IE = 1; // Enable the Interrupt
 }
 
-void avoidOverflow() {
-    if (fillPos > TXBUFSIZE && sendPos > TXBUFSIZE) {
-        fillPos -= TXBUFSIZE;
-        sendPos -= TXBUFSIZE;
-    }
-    if(fillPos > sendPos + TXBUFSIZE){
-        fillPos -= TXBUFSIZE;
-    }
-    if(sendPos > fillPos + TXBUFSIZE){
-        sendPos -= TXBUFSIZE;
-    }
+void spiEnable(){
+    SPI1STATbits.SPIEN = 1;
 }
 
-void _ISRFAST _SPI1Interrupt(void) {
-    //unsigned int buffer;
-    //disableADCInt();
-
-    // Retrieve data from receive buffer
-    IFS0bits.SPI1IF = 0; //Clear the interrupt flag
-    SPI1STATbits.SPIROV = 0; //Clear any errors
-    //buffer = SPI1BUF;                //Read in SPI1 buffer
-
-    // Transfers from dsPIC to ARM
-    while(SPI1STATbits.SPITBF); // wait for transfer?
-
-    int value;
-    if(sendPos < TXBUFSIZE){
-        if(fill0send1){
-            value = txBuffer1[sendPos];
-        }else{
-            value = txBuffer0[sendPos];
-        }
-        sendPos++;
-    }
-    WriteSPI1(value);
-
-    //enableADCInt();
-    return;
+void spiDisable(){
+    SPI1STATbits.SPIEN = 0;
 }
 
-void addToSPIBuffer(unsigned int data){
-    if(fill0send1){
-        txBuffer0[fillPos] = data;
-    }else{
-        txBuffer1[fillPos] = data;
-    }
-    fillPos++;
-    if(fillPos==TXBUFSIZE){
-        fill0send1 ^= 1;
-        fillPos = 0;
-        if(sendPos!=TXBUFSIZE){
-            //debuging break point
-            sendPos = sendPos;
-        }
-        sendPos = 0;
-    }
+void spiSendWordBlocking(int data){
+    while(SPI1STATbits.SPITBF);
+    SPI1BUF = data;
 }
 
-int getFillSize(){
-    return fillSz;
+void spiSendWordArrayBlocking(int* data, int count) {
+    int i;
+    while (SPI1STATbits.SPITBF);
+    SPI1BUF = 0xFFFF;
+    while (SPI1STATbits.SPITBF);
+    SPI1BUF = STARTWORD;
+    while (SPI1STATbits.SPITBF);
+    SPI1BUF = count;
+    for (i = 0; i < count; i++) {
+        while (SPI1STATbits.SPITBF);
+        SPI1BUF = data[i];
+    }
+    while (SPI1STATbits.SPITBF);
+    SPI1BUF = 0;
+    while (SPI1STATbits.SPITBF);
 }
+
+/*
+void spiSendWordArrayBlockingMarkMSB(int* data, int count){
+    int i;
+    for(i=0;i<count;i++){
+        while(SPI1STATbits.SPITBF);
+        SPI1BUF = data[i] | 0x8000;
+    }
+    while(SPI1STATbits.SPITBF);
+}
+*/
