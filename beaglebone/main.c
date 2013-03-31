@@ -247,6 +247,20 @@ int saveBufferFromSpi(int** outPtr, int* outCount){
 	return count;
 }
 
+void printVisual(int x, int max){
+#define NUMOFPOINTS 100
+       int count = (int)((float)x/max*NUMOFPOINTS);
+       int i;
+       for(i=0;i<NUMOFPOINTS;i++){
+               if(i==count){
+                       printf("#");
+               }else{
+                       printf("-");
+               }
+               //printf("\n");
+       }
+}
+
 void performXCorr(){
 	int *buf, *ch0, *ch1, index;
 	int sz, chsz;
@@ -259,6 +273,7 @@ void performXCorr(){
 	xcorr(ch0, ch1, chsz, corr);
 	index = maxIndex(corr, sz, &maxVal);
 	index -= chsz;
+	printVisual(index+512, 1024);
 	printf("delay: %d, correlation: %lf\n", index, maxVal);
 }
 
