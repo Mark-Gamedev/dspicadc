@@ -121,68 +121,6 @@ static void pabort(const char *s){
 	abort();
 }
 
-void processData6(uint8_t *data){
-	int val2 = data[5] << 8 | data[4];
-	int val1 = data[3] << 8 | data[2];
-	int val0 = data[1] << 8 | data[0];
-	printf("%04x %04x %04x\n", val0, val1, val2);
-}
-
-void processData2(uint8_t *data){
-	int raw = data[1] << 8 | data[0];
-	int scanCounter = (raw >> 10) & 0b11;
-	int sampleCounter = (raw >> 12) & 0xF;
-	int value = raw & 0x3FF;
-	//if(raw & 0x8000){
-	//	printf("samples in buffer: %d  %04x\n", raw & 0x7FFF, raw & 0x7FFF);
-	//}else{
-		printf("%04d %01d %04d    %04x\n", sampleCounter, scanCounter, value, raw);
-	//}
-}
-
-void processDataForXcorr(uint8_t *data){
-	int raw = data[1] << 8 | data[0];
-	int scanCounter = (raw >> 10) & 0b11;
-	int value = raw & 0x3FF;
-
-	int *ch0, *ch1;
-	if(fillingB1){
-		ch0 = (int*)ch0b1;
-		ch1 = (int*)ch1b1;
-	}else{
-		ch0 = ch0b0;
-		ch1 = ch1b0;
-	}
-
-	if(scanCounter==0){
-		ch0[fillCounter >> 1] = value;
-	}
-	if(scanCounter==1){
-		ch1[fillCounter >> 1] = value;
-	}
-	fillCounter++;
-	if((fillCounter >> 1) == SMPSZ){
-		//int d = xcorr(ch1, ch0, SMPSZ);
-		//printf("%d\n", d);
-		fillingB1 ^= 1;
-		//pthread_create(&thread, 0, performXCorr, 0);
-		fillCounter = 0;
-	}
-}
-
-void processDataTimeDelay(short *data){
-	int raw;
-
-	raw = 0xFFFF & data[0];
-	if((raw & 0xFF00)!=0xAB00){
-		return;
-	}
-	//printf("%04x\t", raw);
-
-	raw = 0xFFFF & data[1];
-	printf("\t%d\n", raw);
-}
-
 void printDataPoint(short *data, int size){
 	int i = data[0] & 0xFFFF;
 	if(i&0x8000){
@@ -217,7 +155,7 @@ int transfer(){
 		pabort("can't send spi message");
 	}
 
-	processDataTimeDelay((short*)rx);
+	//processDataTimeDelay((short*)rx);
 	//printDataPoint((short*)rx, SZ>>1);
 
 	return 0;
