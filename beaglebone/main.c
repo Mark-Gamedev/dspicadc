@@ -22,19 +22,14 @@ static int fd;
 //#define SZ 150
 #define SZ 2
 
-#define SMPSZ 500
+#define SMPSZ 512
 
 #define STARTWORD 0xFABC
 #define ENDWORD   0xFABD
 
 extern int xcorr(int*, int*, int, double*);
 extern int maxIndex(double *, int , double *);
-static int ch0b0[SMPSZ];
-static int ch1b0[SMPSZ];
-static int ch0b1[SMPSZ];
-static int ch1b1[SMPSZ];
-static int fillingB1;
-static int fillCounter;
+extern void plotGraph(int *, int *, int);
 
 static void pabort(const char *s);
 int saveBufferFromSpi(int**, int*);
@@ -186,7 +181,7 @@ int saveBufferFromSpi(int** outPtr, int* outCount){
 }
 
 void printVisual(int x, int max){
-#define NUMOFPOINTS 100
+#define NUMOFPOINTS 102
        int count = (int)((float)x/max*NUMOFPOINTS);
        int i;
        for(i=0;i<NUMOFPOINTS;i++){
@@ -211,46 +206,14 @@ void performXCorr(){
 	xcorr(ch0, ch1, chsz, corr);
 	index = maxIndex(corr, sz, &maxVal);
 	index -= chsz;
-	printVisual(index+512, 1024);
-	printf("delay: %d, correlation: %lf\n", index, maxVal);
-}
-
-void saveWaveToFile(){
-	int *buf;
-	int sz;
-	int i;
-	for(i=0;i<10;i++){
-		saveBufferFromSpi(&buf, &sz);
-		if(sz==1024){
-			printf("got one wave sample, saving...");
-			fflush(stdout);
-			char path[10];
-			sprintf(path, "ch0_%d.txt", i);
-			int fd0 = open(path, O_RDWR|O_CREAT);
-			fchmod(fd0, 00664);
-			sprintf(path, "ch1_%d.txt", i);
-			int fd1 = open(path, O_RDWR|O_CREAT);
-			fchmod(fd1, 00664);
-			int j;
-			for(j=0;j<512;j++){
-				char data[5];
-				sprintf(data, "%4d\n", buf[j]);
-				write(fd0, data, 5);
-				sprintf(data, "%4d\n", buf[j+512]);
-				write(fd1, data, 5);
-			}
-			free(buf);
-			close(fd0);
-			close(fd1);
-			printf("saved files for sample %d\n", i);
-		}
-	}
+	printVisual(index+SMPSZ, SMPSZ*2);
+	printf("delay: %d, corr: %lf\n", index, maxVal);
+	plotGraph(ch0, ch1, SMPSZ);
 }
 
 int main(int argc, char *argv[]){
 	spiInit();
 
-	//saveWave();
 	while(1){
 		performXCorr();
 	}
