@@ -26,7 +26,7 @@ void switchToPLL() {
     // Configure Oscillator to operate the device at 40Mhz
     // Fosc= Fin*M/(N1*N2), Fcy=Fosc/2
     // Fosc= 4M*80/(2*2)=80Mhz for 8M input clock
-    PLLFBD = 38;
+    PLLFBD = 78;
     CLKDIVbits.PLLPOST = 0;   // N1=2
     CLKDIVbits.PLLPRE = 0;    // N2=2
     OSCTUN = 0;               // Tune FRC oscillator, if FRC is used

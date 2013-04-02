@@ -80,30 +80,22 @@ ADC INTERRUPT SERVICE ROUTINE
 
 int scanCounter;
 int smpSz, startCount;
-int idleAvg[4] = {0,};
-#define hasAvg() (idleAvg[0]!=0)
 void __attribute__((interrupt, no_auto_psv)) _ADC1Interrupt(void) {
     int value = ADC1BUF0;
     
-    switch(scanCounter){
-        case 0:
-            /* for some reason if I put threshold check anywhere else,
-             * only the first knock will work properly...
-             */
-            // detecting threshold
-            if(value > THRESHOLD){
-                startCount = 1;
-            }
-            addToChannel0(value);
-            break;
-        case 1:
-            addToChannel1(value);
-            break;
-        case 2:
-            addToChannel2(value);
-            break;
-        default:
-            break;
+    if(scanCounter == 0) {
+        /* for some reason if I put threshold check anywhere else,
+         * only the first knock will work properly...
+         */
+        // detecting threshold
+        if (value > THRESHOLD) {
+            startCount = 1;
+        }
+        addToChannel0(value);
+    } else if (scanCounter == 1) {
+        addToChannel1(value);
+    } else if (scanCounter == 2) {
+        addToChannel2(value);
     }
     scanCounter++;
     scanCounter &= 3;
