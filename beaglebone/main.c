@@ -198,6 +198,7 @@ void performXCorr(){
 	int *buf, *ch0, *ch1, index;
 	int sz, chsz;
 	double *corr, maxVal;
+	printf("waiting for knock...\n");
 	saveBufferFromSpi(&buf, &sz);
 	chsz = sz >> 1;
 	ch0 = buf;

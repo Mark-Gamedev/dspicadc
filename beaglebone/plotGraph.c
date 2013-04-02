@@ -24,8 +24,7 @@ void plotWithGnuplot(char *path0, char* path1, char *imagePath){
 	char cmd[1024];
 	sprintf(cmd, "echo \"set term pngcairo; \
 		   plot \\\"%s\\\" with line lt 3, \\\"%s\\\" with line lt 1; \
-		   \" | gnuplot > %s", path0, path1, imagePath);
-	printf("%s\n", cmd);
+		   \" | gnuplot > %s", path0, path1, imgPath);
 	system(cmd);
 	sprintf(cmd, "feh -Z -F %s", imgPath);
 	system(cmd);
