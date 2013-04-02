@@ -66,7 +66,7 @@ will stop sampling and trigger a conversion on every Timer3 time-out, i.e., Ts=1
 =============================================================================*/
 void initTmr3() {
     TMR3 = 0x0000;
-    PR3 = 499;
+    PR3 = 999;
     IFS0bits.T3IF = 0;
     IEC0bits.T3IE = 0;
 
@@ -84,21 +84,12 @@ int idleAvg[4] = {0,};
 #define hasAvg() (idleAvg[0]!=0)
 void __attribute__((interrupt, no_auto_psv)) _ADC1Interrupt(void) {
     int value = ADC1BUF0;
-    // each spi transfer is 16 bits
-    // 0sss ccdd dddd dddd
-    // s -- sequence number/sampleCounter
-    // c -- channel number
-    // d -- data
-
-    //value = Convert10BitToQ15(value-OFFSET);
-    //value = value << 2;
-    //if(hasAvg()){
-    //    value -= idleAvg[scanCounter];
-    //}
-
-    //value -= 512;
+    
     switch(scanCounter){
         case 0:
+            /* for some reason if I put threshold check anywhere else,
+             * only the first knock will work properly...
+             */
             // detecting threshold
             if(value > THRESHOLD){
                 startCount = 1;
@@ -117,21 +108,13 @@ void __attribute__((interrupt, no_auto_psv)) _ADC1Interrupt(void) {
     scanCounter++;
     scanCounter &= 3;
 
-    // average
-    /*
-    if(!hasAvg() && isCh0Full()){
-        idleAvg[0] = readChannel0();
-        idleAvg[1] = readChannel1();
-        idleAvg[2] = readChannel2();
-    }
-    */
-
     if(startCount){
         smpSz++;
     }
 
     // continue to overwrite half of the buffer after detecting threshold
-    if(smpSz == BUFFER_SZ){
+    // number of samples beyond threshold = smpSz/4
+    if(smpSz == BUFFER_SZ<<1){
         adcDisable();
         smpSz = 0;
         startCount = 0;
