@@ -1,6 +1,6 @@
 
 TARGET = impac
-SRCS   = main.c xcorr.c plotGraph.c
+SRCS   = main.c xcorr.c plotGraph.c peakDetect.c
 OBJS   = $(SRCS:.c=.o)
 
 CC = gcc

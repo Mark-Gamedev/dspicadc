@@ -28,8 +28,11 @@ static int fd;
 #define ENDWORD   0xFABD
 
 extern int xcorr(int*, int*, int, double*);
+#define THRESHOLD 500
+extern int firstPeak(int*, int, int);
 extern int maxIndex(double *, int , double *);
 extern void plotGraph(int *, int *, int);
+extern void plotGraphAndLines(int *, int *, int, int, int);
 
 static void pabort(const char *s);
 int saveBufferFromSpi(int**, int*);
@@ -194,6 +197,20 @@ void printVisual(int x, int max){
        }
 }
 
+void performFirstPeak(){
+	int *buf, *ch0, *ch1, index0, index1;
+	int sz, chsz;
+	printf("waiting for knock...\n");
+	saveBufferFromSpi(&buf, &sz);
+	chsz = sz >> 1;
+	ch0 = buf;
+	ch1 = &buf[chsz];
+	index0 = firstPeak(ch0, chsz, THRESHOLD);
+	index1 = firstPeak(ch1, chsz, THRESHOLD);
+	printf("diff: %d, i0: %d, i1: %d\n", index1-index0, index0, index1);
+	plotGraphAndLines(ch0, ch1, index0, index1, SMPSZ);
+}
+
 void performXCorr(){
 	int *buf, *ch0, *ch1, index;
 	int sz, chsz;
@@ -216,7 +233,8 @@ int main(int argc, char *argv[]){
 	spiInit();
 
 	while(1){
-		performXCorr();
+		//performXCorr();
+		performFirstPeak();
 	}
 
 	spiCleanup();
