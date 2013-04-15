@@ -25,14 +25,13 @@ static int fd;
 #define SMPSZ 512
 
 #define STARTWORD 0xFABC
-#define ENDWORD   0xFABD
 
 extern int xcorr(int*, int*, int, double*);
 #define THRESHOLD 500
 extern int firstPeak(int*, int, int);
 extern int maxIndex(double *, int , double *);
 extern void plotGraph(int *, int *, int);
-extern void plotGraphAndLines(int *, int *, int, int, int);
+extern void plotWithGnuplot(char *, ...);
 
 static void pabort(const char *s);
 int saveBufferFromSpi(int**, int*);
@@ -198,30 +197,35 @@ void printVisual(int x, int max){
 }
 
 void performFirstPeak(){
-	int *buf, *ch0, *ch1, index0, index1;
+	int *buf, *ch0, *ch1, *ch2, index0, index1, index2;
 	int sz, chsz;
 	printf("waiting for knock...\n");
 	saveBufferFromSpi(&buf, &sz);
-	chsz = sz >> 1;
+	chsz = sz/3;
 	ch0 = buf;
 	ch1 = &buf[chsz];
+	ch2 = &buf[chsz*2];
 	index0 = firstPeak(ch0, chsz, THRESHOLD);
 	index1 = firstPeak(ch1, chsz, THRESHOLD);
+	index2 = firstPeak(ch2, chsz, THRESHOLD);
+	index2 -= 0;
 	printf("diff: %d, i0: %d, i1: %d\n", index1-index0, index0, index1);
-	plotGraphAndLines(ch0, ch1, index0, index1, SMPSZ);
 }
 
 void performXCorr(){
-	int *buf, *ch0, *ch1, index;
+	int *buf, *ch0, *ch1, *ch2, index;
 	int sz, chsz;
 	double *corr, maxVal;
 	printf("waiting for knock...\n");
 	saveBufferFromSpi(&buf, &sz);
-	chsz = sz >> 1;
+	chsz = sz/3;
 	ch0 = buf;
 	ch1 = &buf[chsz];
-	corr = calloc(sz, sizeof(double));
+	ch2 = &buf[chsz*2];
+	corr = calloc(chsz*2, sizeof(double));
+
 	xcorr(ch0, ch1, chsz, corr);
+	xcorr(ch0, ch2, chsz, corr);
 	index = maxIndex(corr, sz, &maxVal);
 	index -= chsz;
 	printVisual(index+SMPSZ, SMPSZ*2);
@@ -230,6 +234,7 @@ void performXCorr(){
 }
 
 int main(int argc, char *argv[]){
+	plotWithGnuplot("sssdd", "aaa", "bbb", "ccc", 4, 5);
 	spiInit();
 
 	while(1){

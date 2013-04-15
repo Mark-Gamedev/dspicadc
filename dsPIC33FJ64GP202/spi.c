@@ -2,18 +2,17 @@
 #include <spi.h>
 
 #define STARTWORD 0xFABC
-#define ENDWORD   0xFABD
 
 void spiPinConfig(){
     //remap pins
 
     TRISB = 0xFFFF;
-    TRISBbits.TRISB6 = 0;     // RB6 as output
+    TRISBbits.TRISB7 = 0;     // RB6 as output
 
-    RPINR20bits.SDI1R = 9;    // SPI1 data input tie to RP14
-    RPINR20bits.SCK1R = 8;    // SPI1 clock input tie to RP13
-    RPINR21bits.SS1R = 7;     // SPI1 slave select tie to RP12
-    RPOR3bits.RP6R = 0b00111; // RP11 tie to SPI data out
+    RPINR20bits.SDI1R = 8;    // SPI1 data input tie to RP14
+    RPINR20bits.SCK1R = 6;    // SPI1 clock input tie to RP6
+    RPINR21bits.SS1R = 9;     // SPI1 slave select tie to RP9
+    RPOR3bits.RP7R = 0b00111; // RP7 tie to SPI data out
 }
 
 void initSPI(void) {

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 
 #define DATAPATH "/tmp/impact-temp-data"
 #define PNGPATH "/tmp/impact-temp-png"
@@ -16,24 +17,48 @@ void saveBufferToFile(int *buf, int size, char* path){
 	fclose(fd);
 }
 
-void plotWithGnuplot(char *path0, char* path1, char* path2, char* path3, char *imagePath){
-	char *imgPath = imagePath;
-	if(!imgPath){
-		imgPath = PNGPATH;
-	}
+void plotWithGnuplot(char *fmt, ...){
+
+	va_list ap;
+	char* xs;
+	int xi;
+	FILE *fd;
 	char cmd[1024];
-	if(path2 && path3){
-		sprintf(cmd, "echo \"set term pngcairo; \
-				plot \\\"%s\\\" with line lt 3, \
-				\\\"%s\\\" with line lt 1, \
-				\\\"%s\\\" with line lt 4, \
-				\\\"%s\\\" with line lt 2; \
-				\" | gnuplot > %s", path0, path1, path2, path3, imgPath);
-	}else{
-		sprintf(cmd, "echo \"set term pngcairo; \
-				plot \\\"%s\\\" with line lt 3, \\\"%s\\\" with line lt 1; \
-				\" | gnuplot > %s", path0, path1, imgPath);
+	char path[1024];
+	char data[1024];
+	char *imgPath = PNGPATH;
+	int i = 0;
+
+	sprintf(cmd, "echo \"set term pngcairo; ");
+	va_start(ap, fmt);
+	while(*fmt){
+		switch(*fmt){
+			case 's':
+				xs = va_arg(ap, char*);
+				sprintf(cmd, "%s, plot \\\"%s\\\" with line", cmd, xs);
+				break;
+			case 'd':
+				xi = va_arg(ap, int);
+
+				sprintf(path, "%s-p%d", DATAPATH, i++);
+				fd = fopen(path, "w");
+				sprintf(data, "%d\t%d\n", xi-1, 0);
+				sprintf(data, "%s%d\t%d\n", data, xi, 1024);
+				fputs(data, fd);
+				fclose(fd);
+
+				sprintf(cmd, "%s, plot \\\"%s\\\" with line", cmd, path);
+
+				break;
+		}
+		fmt++;
 	}
+	va_end(ap);
+	sprintf(cmd, "%s | gnuplot > %s", cmd, imgPath);
+	cmd[25] = ' ';
+
+	printf("cmd:%s\n", cmd);exit(0);
+
 	system(cmd);
 	sprintf(cmd, "feh -Z -F %s", imgPath);
 	system(cmd);
@@ -47,7 +72,7 @@ void plotGraph(int *data0, int *data1, int size){
 	saveBufferToFile(data0, size, path0);
 	sprintf(path1, "%s-%d", DATAPATH, 1);
 	saveBufferToFile(data1, size, path1);
-	plotWithGnuplot(path0, path1, 0, 0, 0);
+	plotWithGnuplot("ss", path0, path1); 
 }
 
 void plotGraphAndLines(int *data0, int *data1, int index0, int index1, int size){
@@ -77,6 +102,6 @@ void plotGraphAndLines(int *data0, int *data1, int index0, int index1, int size)
 	fputs(data, fd);
 	fclose(fd);
 
-	plotWithGnuplot(path0, path1, pathp0, pathp1, 0);
+	plotWithGnuplot("ssss", path0, path1, pathp0, pathp1);
 }
 

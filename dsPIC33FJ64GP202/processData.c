@@ -5,10 +5,15 @@
 CircularBuffer cbch0;
 CircularBuffer cbch1;
 CircularBuffer cbch2;
-fractional dataBuffer[BUFFER_SZ*4];
+fractional dataBuffer[BUFFER_SZ*3];
+fractional *ch0Buf;
+fractional *ch1Buf;
+fractional *ch2Buf;
+/*
 fractional *xcorrBuf0;
 fractional *xcorrBuf1;
 fractional *xcorrResult;
+*/
 
 CBType cbRead(CircularBuffer *cb){
     CBType ret = cb->buf[cb->start];
@@ -46,14 +51,20 @@ void cbCopyToArray(CircularBuffer *cb, CBType *dst){
     memcpy(dst1, cb->buf, size1);
 }
 
-void initBuffers(){
+void initBuffers() {
     cbch0.size = BUFFER_SZ;
     cbch1.size = BUFFER_SZ;
     cbch2.size = BUFFER_SZ;
 
+    ch0Buf = &dataBuffer[0];
+    ch1Buf = &dataBuffer[BUFFER_SZ];
+    ch2Buf = &dataBuffer[BUFFER_SZ*2];
+
+    /*
     xcorrBuf0   = &dataBuffer[0];
     xcorrBuf1   = &dataBuffer[BUFFER_SZ];
     xcorrResult = &dataBuffer[BUFFER_SZ*2];
+    */
 }
 
 int isCh0Full(){
@@ -93,13 +104,15 @@ void readChannel2(){
 }
 
 void sendBufferOverSpi(){
-    cbCopyToArray(&cbch0, xcorrBuf0);
-    cbCopyToArray(&cbch1, xcorrBuf1);
+    cbCopyToArray(&cbch0, ch0Buf);
+    cbCopyToArray(&cbch1, ch1Buf);
+    cbCopyToArray(&cbch2, ch2Buf);
     
     /* send data over spi */
-    spiSendWordArrayBlocking(xcorrBuf0, BUFFER_SZ*2);
+    spiSendWordArrayBlocking(ch0Buf, BUFFER_SZ*3);
 }
 
+/*
 void performXCorrelation(){
     int corr01;
 
@@ -120,3 +133,4 @@ void performXCorrelation(){
     spiData[2] = 0;
     spiSendWordArrayBlocking(spiData, 3);
 }
+*/
