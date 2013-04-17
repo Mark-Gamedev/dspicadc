@@ -29,13 +29,13 @@ void plotWithGnuplot(char *fmt, ...){
 	char *imgPath = PNGPATH;
 	int i = 0;
 
-	sprintf(cmd, "echo \"set term pngcairo; ");
+	sprintf(cmd, "echo \"set term pngcairo; plot");
 	va_start(ap, fmt);
 	while(*fmt){
 		switch(*fmt){
 			case 's':
 				xs = va_arg(ap, char*);
-				sprintf(cmd, "%s, plot \\\"%s\\\" with line", cmd, xs);
+				sprintf(cmd, "%s, \\\"%s\\\" with line", cmd, xs);
 				break;
 			case 'd':
 				xi = va_arg(ap, int);
@@ -47,17 +47,17 @@ void plotWithGnuplot(char *fmt, ...){
 				fputs(data, fd);
 				fclose(fd);
 
-				sprintf(cmd, "%s, plot \\\"%s\\\" with line", cmd, path);
+				sprintf(cmd, "%s, \\\"%s\\\" with line", cmd, path);
 
 				break;
 		}
 		fmt++;
 	}
 	va_end(ap);
-	sprintf(cmd, "%s | gnuplot > %s", cmd, imgPath);
-	cmd[25] = ' ';
+	sprintf(cmd, "%s\" | gnuplot > %s", cmd, imgPath);
+	cmd[29] = ' ';
 
-	printf("cmd:%s\n", cmd);exit(0);
+	//printf("cmd:%s\n", cmd);exit(0);
 
 	system(cmd);
 	sprintf(cmd, "feh -Z -F %s", imgPath);

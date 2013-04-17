@@ -31,6 +31,10 @@ extern int xcorr(int*, int*, int, double*);
 extern int firstPeak(int*, int, int);
 extern int maxIndex(double *, int , double *);
 extern void plotWithGnuplot(char *, ...);
+extern void saveBufferToFile(int *buf, int size, char* path);
+
+extern void startServer();
+extern void sendToServer(char *data, int len);
 
 static void pabort(const char *s);
 int saveBufferFromSpi(int**, int*);
@@ -208,12 +212,18 @@ void performFirstPeak(){
 	index1 = firstPeak(ch1, chsz, THRESHOLD);
 	index2 = firstPeak(ch2, chsz, THRESHOLD);
 	printf("i0: %d, i1: %d, i2: %d\n", index0, index1, index2);
+
+	saveBufferToFile(ch0, chsz, "/tmp/ch0");
+	saveBufferToFile(ch1, chsz, "/tmp/ch1");
+	saveBufferToFile(ch2, chsz, "/tmp/ch2");
+	plotWithGnuplot("sss", "/tmp/ch0", "/tmp/ch1", "/tmp/ch2");
 }
 
 void performXCorr(){
 	int *buf, *ch0, *ch1, *ch2, index;
 	int sz, chsz;
 	double *corr, maxVal;
+	int msg[3];
 	printf("waiting for knock...\n");
 	saveBufferFromSpi(&buf, &sz);
 	chsz = sz/3;
@@ -225,24 +235,40 @@ void performXCorr(){
 	xcorr(ch0, ch1, chsz, corr);
 	index = maxIndex(corr, sz, &maxVal);
 	index -= chsz;
+	msg[0] = index;
 	printf("0-1 delay: %d, corr: %lf", index, maxVal);
 	xcorr(ch0, ch2, chsz, corr);
 	index = maxIndex(corr, sz, &maxVal);
 	index -= chsz;
+	msg[1] = index;
 	printf("\t0-2 delay: %d, corr: %lf", index, maxVal);
 	xcorr(ch1, ch2, chsz, corr);
 	index = maxIndex(corr, sz, &maxVal);
 	index -= chsz;
+	msg[2] = index;
 	printf("\t1-2 delay: %d, corr: %lf\n", index, maxVal);
-	//printVisual(index+SMPSZ, SMPSZ*2);
+
+	saveBufferToFile(ch0, chsz, "/tmp/ch0");
+	saveBufferToFile(ch1, chsz, "/tmp/ch1");
+	saveBufferToFile(ch2, chsz, "/tmp/ch2");
+	sendToServer((char*)msg, sizeof(msg));
+	//plotWithGnuplot("sss", "/tmp/ch0", "/tmp/ch1", "/tmp/ch2");
 }
 
 int main(int argc, char *argv[]){
+	printf("connecting to SPI...");
+	fflush(stdout);
 	spiInit();
+	printf("done\n");
+
+	printf("waiting for TCP connection...");
+	fflush(stdout);
+	startServer();
+	printf("done\n");
 
 	while(1){
-		//performXCorr();
-		performFirstPeak();
+		performXCorr();
+		//performFirstPeak();
 	}
 
 	spiCleanup();
