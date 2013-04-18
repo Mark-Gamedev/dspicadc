@@ -38,6 +38,7 @@ extern void sendToServer(char *data, int len);
 
 static void pabort(const char *s);
 int saveBufferFromSpi(int**, int*);
+void calculateCoord(int tl, int tr, int bl);
 
 int hexDumpCount;
 void hexDump(int x){
@@ -263,6 +264,8 @@ void performThreshold(){
 	int i;
 	int msg[3];
 
+	index0 = index1 = index2 = 0;
+
 	printf("waiting for knock...\n");
 
 	saveBufferFromSpi(&buf, &sz);
@@ -292,6 +295,7 @@ void performThreshold(){
 		}
 	}
 
+	memset(msg, 0, sizeof(msg));
 	msg[0] = index1 - index0;
 	msg[1] = index2 - index0;
 	msg[2] = index2 - index1;
@@ -300,9 +304,36 @@ void performThreshold(){
 	saveBufferToFile(ch0, chsz, "/tmp/ch0");
 	saveBufferToFile(ch1, chsz, "/tmp/ch1");
 	saveBufferToFile(ch2, chsz, "/tmp/ch2");
+	calculateCoord(index2, index0, index1);
 	sendToServer((char*)msg, sizeof(msg));
 	//plotWithGnuplot("sssddd", "/tmp/ch0", "/tmp/ch1", "/tmp/ch2", index0, index1, index2);
 	//plotWithGnuplot("sss", "/tmp/ch0", "/tmp/ch1", "/tmp/ch2", index0, index1, index2);
+}
+
+void calculateCoord(int tl, int tr, int bl){
+	int x = tr - tl;
+	int y = bl - tl;
+	int i, j;
+	int scale = 2;
+	int offset = 30;
+	printf("(%d, %d)\n", x, y);
+	return;
+	x+=offset/2;
+	y+=offset/2;
+	for(i=0; i<offset; i++){
+		for(j=0; j<offset; j++){
+			if(x==i*scale&&y==j*scale){
+				printf("#");
+			}else if(i==0 || i==offset-1){
+				printf("-");
+			}else if(j==0 || j==offset-1){
+				printf("|");
+			}else{
+				printf(" ");
+			}
+		}
+		printf("\n");
+	}
 }
 
 int main(int argc, char *argv[]){
