@@ -27,7 +27,7 @@ static int fd;
 #define STARTWORD 0xFABC
 
 extern int xcorr(int*, int*, int, double*);
-#define THRESHOLD 500
+#define THRESHOLD 580
 extern int firstPeak(int*, int, int);
 extern int maxIndex(double *, int , double *);
 extern void plotWithGnuplot(char *, ...);
@@ -246,13 +246,63 @@ void performXCorr(){
 	index = maxIndex(corr, sz, &maxVal);
 	index -= chsz;
 	msg[2] = index;
+	msg[0] = msg[0];
 	printf("\t1-2 delay: %d, corr: %lf\n", index, maxVal);
 
 	saveBufferToFile(ch0, chsz, "/tmp/ch0");
 	saveBufferToFile(ch1, chsz, "/tmp/ch1");
 	saveBufferToFile(ch2, chsz, "/tmp/ch2");
+	//sendToServer((char*)msg, sizeof(msg));
+	plotWithGnuplot("sss", "/tmp/ch0", "/tmp/ch1", "/tmp/ch2");
+}
+
+void performThreshold(){
+	int *buf, *ch0, *ch1, *ch2;
+	int index0, index1, index2;
+	int sz, chsz;
+	int i;
+	int msg[3];
+
+	printf("waiting for knock...\n");
+
+	saveBufferFromSpi(&buf, &sz);
+	chsz = sz/3;
+	ch0 = buf;
+	ch1 = &buf[chsz];
+	ch2 = &buf[chsz*2];
+
+	for(i=0;i<chsz;i++){
+		if(ch0[i] > THRESHOLD){
+			index0 = i;
+			break;
+		}
+	}
+	
+	for(i=0;i<chsz;i++){
+		if(ch1[i] > THRESHOLD){
+			index1 = i;
+			break;
+		}
+	}
+	
+	for(i=0;i<chsz;i++){
+		if(ch2[i] > THRESHOLD){
+			index2 = i;
+			break;
+		}
+	}
+
+	msg[0] = index1 - index0;
+	msg[1] = index2 - index0;
+	msg[2] = index2 - index1;
+
+	printf("%d  %d  %d \n", index0, index1, index2);
+	saveBufferToFile(ch0, chsz, "/tmp/ch0");
+	saveBufferToFile(ch1, chsz, "/tmp/ch1");
+	saveBufferToFile(ch2, chsz, "/tmp/ch2");
 	sendToServer((char*)msg, sizeof(msg));
-	//plotWithGnuplot("sss", "/tmp/ch0", "/tmp/ch1", "/tmp/ch2");
+	//plotWithGnuplot("sssddd", "/tmp/ch0", "/tmp/ch1", "/tmp/ch2", index0, index1, index2);
+	//plotWithGnuplot("sss", "/tmp/ch0", "/tmp/ch1", "/tmp/ch2", index0, index1, index2);
 }
 
 int main(int argc, char *argv[]){
@@ -267,7 +317,8 @@ int main(int argc, char *argv[]){
 	printf("done\n");
 
 	while(1){
-		performXCorr();
+		//performXCorr();
+		performThreshold();
 		//performFirstPeak();
 	}
 

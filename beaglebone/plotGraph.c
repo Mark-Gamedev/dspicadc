@@ -43,7 +43,7 @@ void plotWithGnuplot(char *fmt, ...){
 				sprintf(path, "%s-p%d", DATAPATH, i++);
 				fd = fopen(path, "w");
 				sprintf(data, "%d\t%d\n", xi-1, 0);
-				sprintf(data, "%s%d\t%d\n", data, xi, 1024);
+				sprintf(data, "%s%d\t%d\n", data, xi, 1000);
 				fputs(data, fd);
 				fclose(fd);
 
