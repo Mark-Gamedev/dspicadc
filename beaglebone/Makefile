@@ -5,7 +5,7 @@ OBJS   = $(SRCS:.c=.o)
 
 CC = gcc
 CCFLAGS = -Wall -Werror
-LDFLAGS = -lpthread -lm
+LDFLAGS = -lm
 LIBS    =
 
 all: $(TARGET) 

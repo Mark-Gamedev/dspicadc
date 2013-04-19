@@ -9,7 +9,6 @@
 #include <sys/stat.h>
 #include <linux/types.h>
 #include <linux/spi/spidev.h>
-#include <pthread.h>
 
 static const char *device = "/dev/spidev2.0";
 static uint8_t mode = 0;
@@ -356,3 +355,4 @@ int main(int argc, char *argv[]){
 	spiCleanup();
 	return 0;
 }
+
