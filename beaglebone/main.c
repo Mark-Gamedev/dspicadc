@@ -294,6 +294,10 @@ void performThreshold(){
 		}
 	}
 
+	if(!index0 || !index1 || !index2){
+		return;
+	}
+
 	memset(msg, 0, sizeof(msg));
 	msg[0] = index1 - index0;
 	msg[1] = index2 - index0;
@@ -315,7 +319,7 @@ void calculateCoord(int tl, int tr, int bl){
 	int i, j;
 	int scale = 2;
 	int offset = 30;
-	printf("(%d, %d)\n", x, y);
+	printf("%d, %d\n", x, y);
 	return;
 	x+=offset/2;
 	y+=offset/2;
@@ -343,7 +347,7 @@ int main(int argc, char *argv[]){
 
 	printf("waiting for TCP connection...");
 	fflush(stdout);
-	startServer();
+	//startServer();
 	printf("done\n");
 
 	while(1){
