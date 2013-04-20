@@ -26,7 +26,7 @@ static int fd;
 #define STARTWORD 0xFABC
 
 extern int xcorr(int*, int*, int, double*);
-#define THRESHOLD 580
+#define THRESHOLD 530
 extern int firstPeak(int*, int, int);
 extern int maxIndex(double *, int , double *);
 extern void plotWithGnuplot(char *, ...);
@@ -37,7 +37,11 @@ extern void sendToServer(char *data, int len);
 
 static void pabort(const char *s);
 int saveBufferFromSpi(int**, int*);
-void calculateCoord(int tl, int tr, int bl);
+
+int delayData[9][2] = {
+	{8, 6}, {2, 5}, {-4, 3},
+	{4, 1}, {-2, -2}, {-8, -1},
+	{2, -1}, {-4, -8}, {-8, -6}};
 
 int hexDumpCount;
 void hexDump(int x){
@@ -185,20 +189,6 @@ int saveBufferFromSpi(int** outPtr, int* outCount){
 	return count;
 }
 
-void printVisual(int x, int max){
-#define NUMOFPOINTS 102
-       int count = (int)((float)x/max*NUMOFPOINTS);
-       int i;
-       for(i=0;i<NUMOFPOINTS;i++){
-               if(i==count){
-                       printf("#");
-               }else{
-                       printf("-");
-               }
-               //printf("\n");
-       }
-}
-
 void performFirstPeak(){
 	int *buf, *ch0, *ch1, *ch2, index0, index1, index2;
 	int sz, chsz;
@@ -216,127 +206,118 @@ void performFirstPeak(){
 	saveBufferToFile(ch0, chsz, "/tmp/ch0");
 	saveBufferToFile(ch1, chsz, "/tmp/ch1");
 	saveBufferToFile(ch2, chsz, "/tmp/ch2");
-	plotWithGnuplot("sss", "/tmp/ch0", "/tmp/ch1", "/tmp/ch2");
 }
 
-void performXCorr(){
-	int *buf, *ch0, *ch1, *ch2, index;
-	int sz, chsz;
+void performXCorr(int *ch0, int *ch1, int *ch2, int chsz, int *d01, int *d02, int *d12){
 	double *corr, maxVal;
-	int msg[3];
-	printf("waiting for knock...\n");
-	saveBufferFromSpi(&buf, &sz);
-	chsz = sz/3;
-	ch0 = buf;
-	ch1 = &buf[chsz];
-	ch2 = &buf[chsz*2];
-	corr = calloc(chsz*2, sizeof(double));
+
+	int sz = chsz*2;
+	corr = calloc(sz, sizeof(double));
 
 	xcorr(ch0, ch1, chsz, corr);
-	index = maxIndex(corr, sz, &maxVal);
-	index -= chsz;
-	msg[0] = index;
-	printf("0-1 delay: %d, corr: %lf", index, maxVal);
-	xcorr(ch0, ch2, chsz, corr);
-	index = maxIndex(corr, sz, &maxVal);
-	index -= chsz;
-	msg[1] = index;
-	printf("\t0-2 delay: %d, corr: %lf", index, maxVal);
-	xcorr(ch1, ch2, chsz, corr);
-	index = maxIndex(corr, sz, &maxVal);
-	index -= chsz;
-	msg[2] = index;
-	msg[0] = msg[0];
-	printf("\t1-2 delay: %d, corr: %lf\n", index, maxVal);
+	*d01 = maxIndex(corr, sz, &maxVal);
+	*d01 -= chsz;
 
-	saveBufferToFile(ch0, chsz, "/tmp/ch0");
-	saveBufferToFile(ch1, chsz, "/tmp/ch1");
-	saveBufferToFile(ch2, chsz, "/tmp/ch2");
-	//sendToServer((char*)msg, sizeof(msg));
-	plotWithGnuplot("sss", "/tmp/ch0", "/tmp/ch1", "/tmp/ch2");
+	xcorr(ch0, ch2, chsz, corr);
+	*d02 = maxIndex(corr, sz, &maxVal);
+	*d02 -= chsz;
+
+	xcorr(ch1, ch2, chsz, corr);
+	*d12 = maxIndex(corr, sz, &maxVal);
+	*d12 -= chsz;
 }
 
-void performThreshold(){
-	int *buf, *ch0, *ch1, *ch2;
-	int index0, index1, index2;
-	int sz, chsz;
+void performThreshold(int *ch0, int *ch1, int *ch2, int chsz, int *index0, int *index1, int *index2){
 	int i;
-	int msg[3];
 
-	index0 = index1 = index2 = 0;
-
-	printf("waiting for knock...\n");
-
-	saveBufferFromSpi(&buf, &sz);
-	chsz = sz/3;
-	ch0 = buf;
-	ch1 = &buf[chsz];
-	ch2 = &buf[chsz*2];
+	*index0 = *index1 = *index2 = 0;
 
 	for(i=0;i<chsz;i++){
 		if(ch0[i] > THRESHOLD){
-			index0 = i;
+			*index0 = i;
 			break;
 		}
 	}
 	
 	for(i=0;i<chsz;i++){
 		if(ch1[i] > THRESHOLD){
-			index1 = i;
+			*index1 = i;
 			break;
 		}
 	}
 	
 	for(i=0;i<chsz;i++){
 		if(ch2[i] > THRESHOLD){
-			index2 = i;
+			*index2 = i;
 			break;
 		}
 	}
+}
 
-	if(!index0 || !index1 || !index2){
-		return;
+#define MARGIN 2
+int calculateCoord(int d0, int d1){
+	int i;
+	for(i=0;i<9;i++){
+		if(d0 >= delayData[i][0]-MARGIN && d0 <= delayData[i][0]+MARGIN && 
+				d1 >= delayData[i][1]-MARGIN && d1 <= delayData[i][1]+MARGIN){
+			return i;
+		}
 	}
+	return -1;
+}
 
-	memset(msg, 0, sizeof(msg));
-	msg[0] = index1 - index0;
-	msg[1] = index2 - index0;
-	msg[2] = index2 - index1;
+void printCoord(int x){
+	int i;
+	for(i=0;i<9;i++){
+		if(i==x){
+			printf("    X    ");
+		}else{
+			printf("    -    ");
+		}
+		if(i==2||i==5||i==8){
+			printf("\n\n\n");
+		}
+	}
+}
 
-	printf("%d  %d  %d \n", index0, index1, index2);
+void runOnce(){
+	int *buf, *ch0, *ch1, *ch2;
+	int d0, d1, d2;
+	int sz, chsz;
+	int msg[3];
+
+	printf("ready...");
+	fflush(stdout);
+
+	saveBufferFromSpi(&buf, &sz);
+	printf("processing...\n");
+	chsz = sz/3;
+	ch0 = buf;
+	ch1 = &buf[chsz];
+	ch2 = &buf[chsz*2];
+
+	performXCorr(ch0, ch1, ch2, chsz, &d0, &d1, &d2);
+	performThreshold(ch0, ch1, ch2, chsz, &d0, &d1, &d2);
+
+	msg[0] = d0;
+	msg[1] = d1;
+	msg[2] = d2;
+	sendToServer((char*)msg, sizeof(msg));
+
+
 	saveBufferToFile(ch0, chsz, "/tmp/ch0");
 	saveBufferToFile(ch1, chsz, "/tmp/ch1");
 	saveBufferToFile(ch2, chsz, "/tmp/ch2");
-	calculateCoord(index2, index0, index1);
-	sendToServer((char*)msg, sizeof(msg));
-	//plotWithGnuplot("sssddd", "/tmp/ch0", "/tmp/ch1", "/tmp/ch2", index0, index1, index2);
-	//plotWithGnuplot("sss", "/tmp/ch0", "/tmp/ch1", "/tmp/ch2", index0, index1, index2);
-}
 
-void calculateCoord(int tl, int tr, int bl){
-	int x = tr - tl;
-	int y = bl - tl;
-	int i, j;
-	int scale = 2;
-	int offset = 30;
-	printf("%d, %d\n", x, y);
-	return;
-	x+=offset/2;
-	y+=offset/2;
-	for(i=0; i<offset; i++){
-		for(j=0; j<offset; j++){
-			if(x==i*scale&&y==j*scale){
-				printf("#");
-			}else if(i==0 || i==offset-1){
-				printf("-");
-			}else if(j==0 || j==offset-1){
-				printf("|");
-			}else{
-				printf(" ");
-			}
-		}
-		printf("\n");
+	//plotWithGnuplot("sss", "/tmp/ch0", "/tmp/ch1", "/tmp/ch2");
+
+	int i;
+	for(i=0;i<20;i++){
+		fputs("\033[A\033[2K", stdout);
 	}
+	//rewind(stdout);
+	printf("%d %d\n", d0-d2, d1-d2);
+	printCoord(calculateCoord(d0-d2, d1-d2));
 }
 
 int main(int argc, char *argv[]){
@@ -351,9 +332,7 @@ int main(int argc, char *argv[]){
 	printf("done\n");
 
 	while(1){
-		//performXCorr();
-		performThreshold();
-		//performFirstPeak();
+		runOnce();
 	}
 
 	spiCleanup();
