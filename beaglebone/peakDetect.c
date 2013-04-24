@@ -14,3 +14,4 @@ int firstPeak(int *x, int size, int threshold){
 	}
 	return -1;
 }
+

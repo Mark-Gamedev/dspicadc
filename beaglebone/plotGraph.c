@@ -64,44 +64,10 @@ void plotWithGnuplot(char *fmt, ...){
 	system(cmd);
 }
 
-void plotGraph(int *data0, int *data1, int size){
-	char path0[256];
-	char path1[256];
-
-	sprintf(path0, "%s-%d", DATAPATH, 0);
-	saveBufferToFile(data0, size, path0);
-	sprintf(path1, "%s-%d", DATAPATH, 1);
-	saveBufferToFile(data1, size, path1);
-	plotWithGnuplot("ss", path0, path1); 
-}
-
-void plotGraphAndLines(int *data0, int *data1, int index0, int index1, int size){
-	char path0[128];
-	char path1[128];
-	char pathp0[128];
-	char pathp1[128];
-	char data[128];
-	FILE *fd;
-
-	sprintf(path0, "%s-%d", DATAPATH, 0);
-	saveBufferToFile(data0, size, path0);
-	sprintf(path1, "%s-%d", DATAPATH, 1);
-	saveBufferToFile(data1, size, path1);
-
-	sprintf(pathp0, "%s-p%d", DATAPATH, 0);
-	fd = fopen(pathp0, "w");
-	sprintf(data, "%d\t%d\n", index0-1, 0);
-	sprintf(data, "%s%d\t%d\n", data, index0, 1024);
-	fputs(data, fd);
-	fclose(fd);
-
-	sprintf(pathp1, "%s-p%d", DATAPATH, 1);
-	fd = fopen(pathp1, "w");
-	sprintf(data, "%d\t%d\n", index1-1, 0);
-	sprintf(data, "%s%d\t%d\n", data, index1, 1024);
-	fputs(data, fd);
-	fclose(fd);
-
-	plotWithGnuplot("ssss", path0, path1, pathp0, pathp1);
+void plotGraph(int *ch0, int *ch1, int *ch2, int chsz){
+	saveBufferToFile(ch0, chsz, "/tmp/ch0");
+	saveBufferToFile(ch1, chsz, "/tmp/ch1");
+	saveBufferToFile(ch2, chsz, "/tmp/ch2");
+	plotWithGnuplot("sss", "/tmp/ch0", "/tmp/ch1", "/tmp/ch2");
 }
 

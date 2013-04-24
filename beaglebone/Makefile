@@ -1,10 +1,10 @@
 
 TARGET = impac
-SRCS   = main.c xcorr.c plotGraph.c peakDetect.c tcpServer.c
+SRCS   = main.c xcorr.c plotGraph.c peakDetect.c tcpServer.c calibration.c spi.c processData.c
 OBJS   = $(SRCS:.c=.o)
 
 CC = gcc
-CCFLAGS = -Wall -Werror
+CCFLAGS = -Wall -Werror -g
 LDFLAGS = -lm
 LIBS    =
 
