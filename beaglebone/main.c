@@ -16,10 +16,7 @@
 #include "processData.h"
 
 
-int delayData[9][2] = {
-	{8, 6}, {2, 5}, {-4, 3},
-	{4, 1}, {-2, -2}, {-8, -1},
-	{2, -1}, {-4, -8}, {-8, -6}};
+int **delayData;
 
 /*
 void performFirstPeak(){
@@ -61,20 +58,6 @@ void performXCorr(int *ch0, int *ch1, int *ch2, int chsz, int *d01, int *d02, in
 }
 */
 
-
-#define MARGIN 2
-int calculateCoord(int d0, int d1){
-	//TODO: calculate margin and pick the lowest margin
-	int i;
-	for(i=0;i<9;i++){
-		if(d0 >= delayData[i][0]-MARGIN && d0 <= delayData[i][0]+MARGIN && 
-				d1 >= delayData[i][1]-MARGIN && d1 <= delayData[i][1]+MARGIN){
-			return i;
-		}
-	}
-	return -1;
-}
-
 void printCoord(int x){
 	int i;
 	for(i=0;i<9;i++){
@@ -93,7 +76,6 @@ void runOnce(){
 	int *buf, *ch0, *ch1, *ch2;
 	int d0, d1, d2;
 	int sz, chsz;
-	int msg[3];
 
 	printf("ready...");
 	fflush(stdout);
@@ -107,10 +89,6 @@ void runOnce(){
 
 	performThreshold(ch0, ch1, ch2, chsz, &d0, &d1, &d2);
 
-	msg[0] = d0;
-	msg[1] = d1;
-	msg[2] = d2;
-	sendToServer((char*)msg, sizeof(msg));
 
 	/*
 	int i;
@@ -118,13 +96,9 @@ void runOnce(){
 		fputs("\033[A\033[2K", stdout);
 	}
 	*/
-	printf("%d %d %d\n", d0, d1, d2);
-	//printCoord(calculateCoord(d0-d2, d1-d2));
-
-	saveBufferToFile(ch0, chsz, "/tmp/ch0");
-	saveBufferToFile(ch1, chsz, "/tmp/ch1");
-	saveBufferToFile(ch2, chsz, "/tmp/ch2");
-	plotWithGnuplot("sss", "/tmp/ch0", "/tmp/ch1", "/tmp/ch2");
+	//printf("%d %d %d\n", d0, d1, d2);
+	int result = calculateLocation(d0, d1, d2);
+	printf("r:%d\n", result);
 
 	free(buf);
 }
@@ -135,9 +109,7 @@ int main(int argc, char *argv[]){
 	spiInit();
 	printf("done\n");
 
-	calibrate(3, 5);
-	printCalibrationData();
-	exit(0);
+	calibrate(9, 10);
 
 	printf("waiting for TCP connection...");
 	fflush(stdout);
@@ -146,6 +118,7 @@ int main(int argc, char *argv[]){
 
 	while(1){
 		runOnce();
+		sleep(1);
 	}
 
 	spiCleanup();
