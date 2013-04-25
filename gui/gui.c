@@ -1,12 +1,43 @@
 #include <unistd.h>
+#include <stdio.h>
 #include <GL/glut.h>
 #include <pthread.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
 
 #define HEIGHT 600
 #define WIDTH  600
 #define PADDING 2
 
+#define PORT 3300
+
 int boxNum = 0;
+#define LOCATION 100
+double locationCorr[LOCATION];
+int maxIndex;
+
+int maxIndexOfLocationCorr(){
+	int index = 0;
+	double max = locationCorr[index];
+	int i=1;
+	for(;i<LOCATION;i++){
+		if(locationCorr[i] > max){
+			index = i;
+			max = locationCorr[i];
+		}
+	}
+	return index;
+}
+
+void error(char *m){
+	perror(m);
+	exit(0);
+}
 
 void reshape(int w, int h)
 {
@@ -69,10 +100,12 @@ void drawBoxes(int x, int offsetx, int offsety){
 	for(;i<x;i++){
 		int j=0;
 		for(;j<x;j++){
-			if(boxNum==i*x+j){
+			if(maxIndex==i*x+j){
 				fillBox(j*(w+PADDING)+offsetx, i*(h+PADDING)+offsety, j*(w+PADDING)+w+offsetx, i*(h+PADDING)+h+offsety, 1.0, 0.0, 0.0);
 			}else{
-				fillBox(j*(w+PADDING)+offsetx, i*(h+PADDING)+offsety, j*(w+PADDING)+w+offsetx, i*(h+PADDING)+h+offsety, 1.0, 1.0, 1.0);
+				fillBox(j*(w+PADDING)+offsetx, i*(h+PADDING)+offsety,
+						j*(w+PADDING)+w+offsetx, i*(h+PADDING)+h+offsety,
+						(float)locationCorr[i*x+j], (float)locationCorr[i*x+j], (float)locationCorr[i*x+j]);
 			}
 		}
 	}
@@ -83,32 +116,51 @@ void display(void)
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	drawContainBox();
+	fillBox(PADDING, PADDING, WIDTH+PADDING, HEIGHT+PADDING, 1.0, 1.0, 1.0);
 	drawBoxes(10, PADDING*2, PADDING*2);
 
 	glutSwapBuffers();
 	glutPostRedisplay();
 }
 
-int counter = 0;
+int sockfd;
+void tcpClient(char *hostname){
+	struct sockaddr_in serveraddr;
+	struct hostent *server;
+	sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	if(sockfd < 0)
+		error("ERROR opening socket");
+
+	server = gethostbyname(hostname);
+	if(!server){
+		exit(0);
+	}
+
+	bzero((char*)&serveraddr, sizeof(serveraddr));
+	serveraddr.sin_family = AF_INET;
+	bcopy((char *)server->h_addr, (char *)&serveraddr.sin_addr.s_addr, server->h_length);
+	serveraddr.sin_port = htons(PORT);
+
+	if(connect(sockfd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) <0)
+		error("ERROR connecting");
+}
+
 void *updateFromServer(void *arg){
-	//TODO: connect to server
+	//char buf[1024];
+	tcpClient(arg);
 	while(1){
-		//TODO: read int from server
-		sleep(1);
-		counter++;
-		if(counter==100){
-			counter=0;
-		}
-		boxNum = counter;
-		usleep(100000);
-		boxNum = -1;
+		read(sockfd, locationCorr, sizeof(locationCorr));
+		maxIndex = maxIndexOfLocationCorr();
 	}
 }
 
 int main(int argc, char **argv)
 {
+	if(argc < 2){
+		exit(0);
+	}
 	pthread_t updateThread;
-	pthread_create(&updateThread, 0, updateFromServer, 0);
+	pthread_create(&updateThread, 0, updateFromServer, argv[1]);
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
 	glutCreateWindow("single triangle");
