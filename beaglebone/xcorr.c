@@ -14,7 +14,7 @@
 void xcorr(int *x, int *y, int n, double *out){
 	int i,j;
 	double mx,my,sx,sy,sxy,denom,r;
-	int maxdelay = n;
+	int maxdelay = 10;
 
 	/* Calculate the mean of the two series x[], y[] */
 	mx = 0;
