@@ -149,8 +149,13 @@ void runOnce(int *waves[LOCATIONS][SAMPLENUM]){
 
 	locationHit=maxIndex(locationCorr,LOCATIONS,NULL);
 	printf("%d\n,corr=%lf\n",locationHit,locationCorr[locationHit]);
-	sprintf(msg, "%d", locationHit);
-	sendToServer((char*)msg, sizeof(msg));
+
+	//send entire locationCorr array
+	sendToServer((char*)locationCorr, sizeof(locationCorr));
+
+	bzero(msg, sizeof(msg));
+	//sprintf(msg, "%d", locationHit);
+	//sendToServer((char*)msg, sizeof(msg));
 
 	for(i=0;i<LOCATIONS;i++)
 		locationCorrInt[i]=(int)(locationCorr[i]*100);
