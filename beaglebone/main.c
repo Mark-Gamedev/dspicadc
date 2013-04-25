@@ -15,110 +15,186 @@
 #include "calibration.h"
 #include "processData.h"
 
+#define LOCATIONS 100
+#define SAMPLENUM 1 
 
-int **delayData;
+extern int xcorr(int*, int*, int, double*);
+extern int maxIndex(double *, int , double *);
 
-/*
-void performFirstPeak(){
-	int *buf, *ch0, *ch1, *ch2, index0, index1, index2;
-	int sz, chsz;
-	printf("waiting for knock...\n");
-	saveBufferFromSpi(&buf, &sz);
-	chsz = sz/3;
-	ch0 = buf;
-	ch1 = &buf[chsz];
-	ch2 = &buf[chsz*2];
-	index0 = firstPeak(ch0, chsz, THRESHOLD);
-	index1 = firstPeak(ch1, chsz, THRESHOLD);
-	index2 = firstPeak(ch2, chsz, THRESHOLD);
-	printf("i0: %d, i1: %d, i2: %d\n", index0, index1, index2);
+void saveWaveData(FILE * file,int *buf[LOCATIONS][SAMPLENUM]){
+	int i=0,j=0,k=0;
+	fprintf(file,"%d\n",LOCATIONS);
+	fprintf(file,"%d\n",SAMPLENUM);
+	fprintf(file,"%d\n",512);
 
-	saveBufferToFile(ch0, chsz, "/tmp/ch0");
-	saveBufferToFile(ch1, chsz, "/tmp/ch1");
-	saveBufferToFile(ch2, chsz, "/tmp/ch2");
-}
-
-void performXCorr(int *ch0, int *ch1, int *ch2, int chsz, int *d01, int *d02, int *d12){
-	double *corr, maxVal;
-
-	int sz = chsz*2;
-	corr = calloc(sz, sizeof(double));
-
-	xcorr(ch0, ch1, chsz, corr);
-	*d01 = maxIndex(corr, sz, &maxVal);
-	*d01 -= chsz;
-
-	xcorr(ch0, ch2, chsz, corr);
-	*d02 = maxIndex(corr, sz, &maxVal);
-	*d02 -= chsz;
-
-	xcorr(ch1, ch2, chsz, corr);
-	*d12 = maxIndex(corr, sz, &maxVal);
-	*d12 -= chsz;
-}
-*/
-
-void printCoord(int x){
-	int i;
-	for(i=0;i<9;i++){
-		if(i==x){
-			printf("    X    ");
-		}else{
-			printf("    -    ");
+	for(i=0;i<LOCATIONS;i++){
+		for(j=0;j<SAMPLENUM;j++){
+			for(k=0;k<512;k++){
+				fprintf(file,"%d\n",buf[i][j][k]);
+			}
+			fprintf(file,"%d\n",-1);
 		}
-		if(i==2||i==5||i==8){
-			printf("\n\n\n");
+		fprintf(file,"%d\n",-2);
+	}
+}
+
+void loadWaveData(FILE * file,int *buf[LOCATIONS][SAMPLENUM]){
+	int i=0,j=0,k=0;	
+	int temp;
+	fscanf(file,"%d",&temp);
+	if(temp!=LOCATIONS){
+		printf("LOCATIONS incorrect\n");
+		exit(1);
+	}
+	fscanf(file,"%d",&temp);
+	if(temp!=SAMPLENUM){
+		printf("SAMPLENUM incorrect\n");
+		exit(1);
+	}
+	fscanf(file,"%d",&temp);
+	if(temp!=512){
+		printf("size incorrect\n");
+		exit(1);
+	}
+	for(i=0;i<LOCATIONS;i++){
+		for(j=0;j<SAMPLENUM;j++){
+			if((buf[i][j]=(int*)calloc(512,sizeof(int)))==NULL){
+				printf("calloc failed\n");
+				exit(1);
+			}
+			for(k=0;k<512;k++){
+				
+				if((fscanf(file,"%d",&buf[i][j][k])==EOF)){
+					printf("end of file prematurely\n");
+					exit(1);
+				}
+			}
+			fscanf(file,"%d",&temp);
+			if(temp!=-1){
+				printf("expected -1, file corrupted\n");
+				exit(1);
+			}
+		}
+		fscanf(file,"%d",&temp);
+		if(temp!=-2){
+			printf("expected -2, file corrupted\n");
+			exit(1);
 		}
 	}
 }
 
-void runOnce(){
-	int *buf, *ch0, *ch1, *ch2;
-	int d0, d1, d2;
-	int sz, chsz;
+int file_exists(char * filename){
+	FILE * file;
+	if((file = fopen(filename,"r"))){
+		fclose(file);
+		return 1;
+	} 
+	return 0;
+}
 
-	printf("ready...");
-	fflush(stdout);
+void reverseArray(int * array,int len){
+	int i=0;
+	int temp;
+	len=len-1;
+	for(i=0;i<len/2;i++){
+		temp=array[i];
+		array[i]=array[len-i];
+		array[len-i]=temp;
+	}
+
+}
+
+void defineLocations(int * buf[LOCATIONS][SAMPLENUM]){
+	int i=0,j=0, sz;
+	char msg[128];
+
+	sprintf(msg, "%d", -1);
+	sendToServer((char*)msg, sizeof(msg));
+	for(i=0;i<LOCATIONS;i++){
+		for(j=0;j<SAMPLENUM;j++){
+			saveBufferFromSpi(&buf[i][j],&sz);
+			sleep(1);
+			printf("got %d, %d\n",i,j);
+			sprintf(msg, "%d", i);
+			sendToServer((char*)msg, sizeof(msg));
+		}
+	}
+}
+
+void runOnce(int *waves[LOCATIONS][SAMPLENUM]){
+	int *buf, *ch0;
+	int sz;
+	char msg[32];
+	double xcorrOut[512*2];
+	double locationCorr[LOCATIONS];
+	int locationCorrInt[LOCATIONS];
+	double xCorr;
+	int locationHit;
 
 	saveBufferFromSpi(&buf, &sz);
-	printf("processing...\n");
-	chsz = sz/3;
+	usleep(100000);
 	ch0 = buf;
-	ch1 = &buf[chsz];
-	ch2 = &buf[chsz*2];
 
-	performThreshold(ch0, ch1, ch2, chsz, &d0, &d1, &d2);
-
-
-	/*
-	int i;
-	for(i=0;i<20;i++){
-		fputs("\033[A\033[2K", stdout);
+	int i=0;
+	for(i=0;i<LOCATIONS;i++){
+		locationCorr[i]=0;
+		int j=0;
+		for(j=0;j<SAMPLENUM;j++){
+			xcorr(waves[i][j],ch0,512,xcorrOut);
+			maxIndex(xcorrOut,512,&xCorr);
+			locationCorr[i]+=xCorr;
+		}
+		locationCorr[i]=locationCorr[i]/SAMPLENUM;
 	}
-	*/
-	//printf("%d %d %d\n", d0, d1, d2);
-	int result = calculateLocation(d0, d1, d2);
-	printf("r:%d\n", result);
 
+	locationHit=maxIndex(locationCorr,LOCATIONS,NULL);
+	printf("%d\n,corr=%lf\n",locationHit,locationCorr[locationHit]);
+	sprintf(msg, "%d", locationHit);
+	sendToServer((char*)msg, sizeof(msg));
+
+	for(i=0;i<LOCATIONS;i++)
+		locationCorrInt[i]=(int)(locationCorr[i]*100);
+
+	saveBufferToFile(locationCorrInt, LOCATIONS, "/tmp/locCorr");
+	
 	free(buf);
 }
 
 int main(int argc, char *argv[]){
+	int *buf[LOCATIONS][SAMPLENUM];
+	FILE * file;
 	printf("connecting to SPI...");
 	fflush(stdout);
 	spiInit();
 	printf("done\n");
 
-	calibrate(9, 10);
-
 	printf("waiting for TCP connection...");
 	fflush(stdout);
-	//startServer();
+	startServer();
 	printf("done\n");
 
+	if(argc!=2){
+		printf("please enter a filename\n");
+		exit(1);
+	} else {
+		if(file_exists(argv[1])){
+			printf("file exists\n");
+			file=fopen(argv[1],"r");
+			printf("file opened\n");
+			loadWaveData(file,buf);
+			printf("loaded wave data\n");
+		} else {
+			printf("file does not exist\n");
+			file=fopen(argv[1],"w");
+			defineLocations(buf);
+			saveWaveData(file,buf);
+			printf("saved wave data\n");
+		}
+		fclose(file);
+	}
+
 	while(1){
-		runOnce();
-		sleep(1);
+		runOnce(buf);
 	}
 
 	spiCleanup();
