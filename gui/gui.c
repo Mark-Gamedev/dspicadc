@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <signal.h>
 
 #define HEIGHT 600
 #define WIDTH  600
@@ -20,6 +21,11 @@ int boxNum = 0;
 #define LOCATION 100
 double locationCorr[LOCATION];
 int maxIndex;
+
+int exitProgram = 0;
+void interruptHandler(int signum){
+	exitProgram = 1;
+}
 
 int maxIndexOfLocationCorr(){
 	int index = 0;
@@ -146,12 +152,13 @@ void tcpClient(char *hostname){
 }
 
 void *updateFromServer(void *arg){
-	//char buf[1024];
 	tcpClient(arg);
-	while(1){
+	while(!exitProgram){
 		read(sockfd, locationCorr, sizeof(locationCorr));
 		maxIndex = maxIndexOfLocationCorr();
 	}
+	close(sockfd);
+	exit(0);
 }
 
 int main(int argc, char **argv)
@@ -159,6 +166,9 @@ int main(int argc, char **argv)
 	if(argc < 2){
 		exit(0);
 	}
+
+	signal(SIGINT, interruptHandler);
+
 	pthread_t updateThread;
 	pthread_create(&updateThread, 0, updateFromServer, argv[1]);
 	glutInit(&argc, argv);

@@ -8,6 +8,7 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <linux/types.h>
+#include <signal.h>
 
 #include "spi.h"
 #include "plotGraph.h"
@@ -20,6 +21,11 @@
 
 extern int xcorr(int*, int*, int, double*);
 extern int maxIndex(double *, int , double *);
+
+int exitProgram = 0;
+void interruptHandler(int signum){
+	exitProgram = 1;
+}
 
 void saveWaveData(FILE * file,int *buf[LOCATIONS][SAMPLENUM]){
 	int i=0,j=0,k=0;
@@ -132,7 +138,6 @@ void runOnce(int *waves[LOCATIONS][SAMPLENUM]){
 	int locationHit;
 
 	saveBufferFromSpi(&buf, &sz);
-	usleep(100000);
 	ch0 = buf;
 
 	int i=0;
@@ -168,6 +173,9 @@ void runOnce(int *waves[LOCATIONS][SAMPLENUM]){
 int main(int argc, char *argv[]){
 	int *buf[LOCATIONS][SAMPLENUM];
 	FILE * file;
+
+	signal(SIGINT, interruptHandler);
+
 	printf("connecting to SPI...");
 	fflush(stdout);
 	spiInit();
@@ -198,10 +206,12 @@ int main(int argc, char *argv[]){
 		fclose(file);
 	}
 
-	while(1){
+	while(!exitProgram){
 		runOnce(buf);
+		usleep(100000);
 	}
 
+	cleanupServer();
 	spiCleanup();
 	return 0;
 }

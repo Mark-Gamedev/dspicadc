@@ -36,7 +36,9 @@ void sendToServer(char *data, int len){
 }
 
 void cleanupServer(){
-	close(clientFd);
+	if(clientFd){
+		close(clientFd);
+	}
 	clientFd = 0;
 }
 
