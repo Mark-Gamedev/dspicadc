@@ -25,6 +25,7 @@ extern int maxIndex(double *, int , double *);
 int exitProgram = 0;
 void interruptHandler(int signum){
 	exitProgram = 1;
+	exit(0);
 }
 
 void saveWaveData(FILE * file,int *buf[LOCATIONS][SAMPLENUM]){
@@ -112,17 +113,15 @@ void reverseArray(int * array,int len){
 
 void defineLocations(int * buf[LOCATIONS][SAMPLENUM]){
 	int i=0,j=0, sz;
-	char msg[128];
+	int msg[LOCATIONS];
 
-	sprintf(msg, "%d", -1);
-	sendToServer((char*)msg, sizeof(msg));
 	for(i=0;i<LOCATIONS;i++){
 		for(j=0;j<SAMPLENUM;j++){
 			saveBufferFromSpi(&buf[i][j],&sz);
 			sleep(1);
 			printf("got %d, %d\n",i,j);
-			sprintf(msg, "%d", i);
-			sendToServer((char*)msg, sizeof(msg));
+			msg[0] = i;
+			sendToServer((char*)&msg, sizeof(msg));
 		}
 	}
 }
