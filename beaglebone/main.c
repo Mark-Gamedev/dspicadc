@@ -45,49 +45,50 @@ void saveWaveData(FILE * file,int *buf[LOCATIONS][SAMPLENUM]){
 	}
 }
 
-void loadWaveData(FILE * file,int *buf[LOCATIONS][SAMPLENUM]){
+int loadWaveData(FILE * file,int *buf[LOCATIONS][SAMPLENUM]){
 	int i=0,j=0,k=0;	
 	int temp;
 	fscanf(file,"%d",&temp);
 	if(temp!=LOCATIONS){
 		printf("LOCATIONS incorrect\n");
-		exit(1);
+		return -1;
 	}
 	fscanf(file,"%d",&temp);
 	if(temp!=SAMPLENUM){
 		printf("SAMPLENUM incorrect\n");
-		exit(1);
+		return -1;
 	}
 	fscanf(file,"%d",&temp);
 	if(temp!=512){
 		printf("size incorrect\n");
-		exit(1);
+		return -1;
 	}
 	for(i=0;i<LOCATIONS;i++){
 		for(j=0;j<SAMPLENUM;j++){
 			if((buf[i][j]=(int*)calloc(512,sizeof(int)))==NULL){
 				printf("calloc failed\n");
-				exit(1);
+				return -1;
 			}
 			for(k=0;k<512;k++){
 				
 				if((fscanf(file,"%d",&buf[i][j][k])==EOF)){
 					printf("end of file prematurely\n");
-					exit(1);
+					return -1;
 				}
 			}
 			fscanf(file,"%d",&temp);
 			if(temp!=-1){
 				printf("expected -1, file corrupted\n");
-				exit(1);
+				return -1;
 			}
 		}
 		fscanf(file,"%d",&temp);
 		if(temp!=-2){
 			printf("expected -2, file corrupted\n");
-			exit(1);
+			return -1;
 		}
 	}
+	return 0;
 }
 
 int file_exists(char * filename){
@@ -113,15 +114,16 @@ void reverseArray(int * array,int len){
 
 void defineLocations(int * buf[LOCATIONS][SAMPLENUM]){
 	int i=0,j=0, sz;
-	int msg[LOCATIONS];
+	double msg[LOCATIONS];
 
 	for(i=0;i<LOCATIONS;i++){
 		for(j=0;j<SAMPLENUM;j++){
+			bzero(msg, sizeof(msg));
+			msg[i] = 1.0f;
+			sendToServer((char*)&msg, sizeof(msg));
 			saveBufferFromSpi(&buf[i][j],&sz);
 			sleep(1);
 			printf("got %d, %d\n",i,j);
-			msg[0] = i;
-			sendToServer((char*)&msg, sizeof(msg));
 		}
 	}
 }
@@ -187,13 +189,19 @@ int main(int argc, char *argv[]){
 
 	if(argc!=2){
 		printf("please enter a filename\n");
+		cleanupServer();
+		spiCleanup();
 		exit(1);
 	} else {
 		if(file_exists(argv[1])){
 			printf("file exists\n");
 			file=fopen(argv[1],"r");
 			printf("file opened\n");
-			loadWaveData(file,buf);
+			if(loadWaveData(file,buf)==-1){
+				cleanupServer();
+				spiCleanup();
+				exit(0);
+			}
 			printf("loaded wave data\n");
 		} else {
 			printf("file does not exist\n");
