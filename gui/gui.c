@@ -22,6 +22,8 @@ int boxNum = 0;
 #define LOCATION 100
 double locationCorr[LOCATION];
 int maxIndex;
+int win = 0;
+int mole = -1;
 
 int exitProgram = 0;
 void interruptHandler(int signum){
@@ -111,15 +113,48 @@ void drawBoxes(int x, int offsetx, int offsety){
 	for(;i<x;i++){
 		int j=0;
 		for(;j<x;j++){
-			if(maxIndex==i*x+j){
+			int currentIndex = i*x+j;
+			fillBox(j*(w+PADDING)+offsetx, i*(h+PADDING)+offsety,
+					j*(w+PADDING)+w+offsetx, i*(h+PADDING)+h+offsety,
+					(float)locationCorr[i*x+j], (float)locationCorr[i*x+j], (float)locationCorr[i*x+j]);
+			if(maxIndex==currentIndex){
 				fillBox(j*(w+PADDING)+offsetx, i*(h+PADDING)+offsety, j*(w+PADDING)+w+offsetx, i*(h+PADDING)+h+offsety, 1.0, 0.0, 0.0);
-			}else{
-				fillBox(j*(w+PADDING)+offsetx, i*(h+PADDING)+offsety,
-						j*(w+PADDING)+w+offsetx, i*(h+PADDING)+h+offsety,
-						(float)locationCorr[i*x+j], (float)locationCorr[i*x+j], (float)locationCorr[i*x+j]);
+			}
+			if(mole==currentIndex){
+				fillBox(j*(w+PADDING)+offsetx, i*(h+PADDING)+offsety, j*(w+PADDING)+w+offsetx, i*(h+PADDING)+h+offsety, 0.0, 1.0, 0.0);
+			}
+			if(mole == currentIndex && maxIndex == currentIndex){
+				fillBox(j*(w+PADDING)+offsetx, i*(h+PADDING)+offsety, j*(w+PADDING)+w+offsetx, i*(h+PADDING)+h+offsety, 1.0, 1.0, 0.0);
 			}
 		}
 	}
+}
+
+// Here are the fonts: 
+void *glutFonts[7] = { 
+	GLUT_BITMAP_9_BY_15, 
+	GLUT_BITMAP_8_BY_13, 
+	GLUT_BITMAP_TIMES_ROMAN_10, 
+	GLUT_BITMAP_TIMES_ROMAN_24, 
+	GLUT_BITMAP_HELVETICA_10, 
+	GLUT_BITMAP_HELVETICA_12, 
+	GLUT_BITMAP_HELVETICA_18 
+}; 
+
+// Here is the function 
+void glutPrint(float x, float y, void *font, char* text, float r, float g, float b, float a) 
+{ 
+	if(!text || !strlen(text)) return; 
+	int blending = 0; 
+	if(glIsEnabled(GL_BLEND)) blending = 1; 
+	glEnable(GL_BLEND); 
+	glColor4f(r,g,b,a); 
+	glRasterPos2f(x,y); 
+	while (*text) { 
+		glutBitmapCharacter(font, *text); 
+		text++; 
+	} 
+	if(!blending) glDisable(GL_BLEND); 
 }
 
 void display(void)
@@ -129,6 +164,9 @@ void display(void)
 	drawContainBox();
 	fillBox(PADDING, PADDING, WIDTH+PADDING, HEIGHT+PADDING, 1.0, 1.0, 1.0);
 	drawBoxes(10, PADDING*2, PADDING*2);
+	if(win){
+		glutPrint(200.0f, 100.0f, glutFonts[3], "Good Job!!", 1.0f, 1.0f, 0.0f, 0.7f);
+	}
 
 	glutSwapBuffers();
 	glutPostRedisplay();
@@ -166,6 +204,21 @@ void *updateFromServer(void *arg){
 	exit(0);
 }
 
+void *moleFunc(void *arg){
+	while(1){
+		if(mole==maxIndex){
+			win = 1;
+			sleep(2);
+			win = 0;
+		}
+		mole = rand()%100;
+		while(mole==maxIndex){
+			mole = rand()%100;
+		}
+		sleep(1);
+	}
+}
+
 int main(int argc, char **argv)
 {
 	if(argc < 2){
@@ -176,6 +229,8 @@ int main(int argc, char **argv)
 
 	pthread_t updateThread;
 	pthread_create(&updateThread, 0, updateFromServer, argv[1]);
+	pthread_t moleThread;
+	pthread_create(&moleThread, 0, moleFunc, 0);
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
 	glutCreateWindow("single triangle");
