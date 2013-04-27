@@ -11,11 +11,12 @@
 #include <netdb.h>
 #include <signal.h>
 
-#define HEIGHT 600
-#define WIDTH  600
+#define HEIGHT 700
+#define WIDTH  700
 #define PADDING 2
 
 #define PORT 3300
+#define CORR_THRESHOLD 0.4
 
 int boxNum = 0;
 #define LOCATION 100
@@ -37,7 +38,11 @@ int maxIndexOfLocationCorr(){
 			max = locationCorr[i];
 		}
 	}
-	return index;
+	if(max < CORR_THRESHOLD){
+		return maxIndex;
+	}else{
+		return index;
+	}
 }
 
 void error(char *m){
